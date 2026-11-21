@@ -12,14 +12,20 @@ use crate::exit::Exit;
 use crate::output;
 use crate::sources::on_path;
 
-const OPENER: &str = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
+const OPENER: &str = if cfg!(target_os = "macos") {
+    "open"
+} else {
+    "xdg-open"
+};
 
 pub fn run(ctx: &Context, address: &str, print: bool) -> Result<Exit> {
     let setup = Setup::load(ctx)?;
     let repo = &setup.repos[setup.one(ctx, address, "open")?];
     let try_status = format!("grove status {}", repo.name);
     let Some(remote) = repo.primary_remote() else {
-        return Err(Error::new(format!("{} has no remote, so it has no forge page", repo.name)).try_(try_status));
+        return Err(
+            Error::new(format!("{} has no remote, so it has no forge page", repo.name)).try_(try_status),
+        );
     };
     let Some(forge) = &repo.forge else {
         return Err(Error::new(format!(
@@ -39,7 +45,14 @@ pub fn run(ctx: &Context, address: &str, print: bool) -> Result<Exit> {
             url: &'a str,
             opened: bool,
         }
-        output::print_json("open", Body { repo: &repo.name, url: &forge.url, opened: !print });
+        output::print_json(
+            "open",
+            Body {
+                repo: &repo.name,
+                url: &forge.url,
+                opened: !print,
+            },
+        );
     } else if print {
         println!("{}", forge.url);
     } else {
@@ -54,16 +67,17 @@ fn browse(url: &str) -> Result<()> {
     let mut command = if let Some(entry) = browser.split(':').find(|e| !e.trim().is_empty()) {
         let mut words = entry.split_whitespace().map(|w| w.replace("%s", url));
         let mut command = Command::new(words.next().unwrap_or_default());
-        let args: Vec<String> = words.collect();
-        let has_url = entry.contains("%s");
-        command.args(args);
-        if !has_url {
+        command.args(words);
+        if !entry.contains("%s") {
             command.arg(url);
         }
         command
     } else {
-        let opener = on_path(OPENER)
-            .ok_or_else(|| Error::new(format!("cannot open a browser: BROWSER is unset and {OPENER} is not on PATH")))?;
+        let opener = on_path(OPENER).ok_or_else(|| {
+            Error::new(format!(
+                "cannot open a browser: BROWSER is unset and {OPENER} is not on PATH"
+            ))
+        })?;
         let mut command = Command::new(opener);
         command.arg(url);
         command
@@ -72,5 +86,11 @@ fn browse(url: &str) -> Result<()> {
         .stdin(Stdio::null())
         .status()
         .map_err(|e| Error::new(format!("cannot open a browser: {e}")))?;
-    if status.success() { Ok(()) } else { Err(Error::new(format!("cannot open a browser: it exited with {status}"))) }
+    if status.success() {
+        Ok(())
+    } else {
+        Err(Error::new(format!(
+            "cannot open a browser: it exited with {status}"
+        )))
+    }
 }

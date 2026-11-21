@@ -44,11 +44,16 @@ pub struct Report {
 impl Report {
     /// `(column, state)` for each source whose facts are unknown, for the `? pins: ...` lines.
     pub fn unknown(&self) -> Vec<(&'static str, &State)> {
-        [("pins", &self.graft), ("runs", &self.pot)].into_iter().filter(|(_, s)| **s != State::Ok).collect()
+        [("pins", &self.graft), ("runs", &self.pot)]
+            .into_iter()
+            .filter(|(_, s)| **s != State::Ok)
+            .collect()
     }
 
     pub fn partial(&self) -> bool {
-        [&self.git, &self.graft, &self.pot].into_iter().any(|s| matches!(s, State::Failed(_)))
+        [&self.git, &self.graft, &self.pot]
+            .into_iter()
+            .any(|s| matches!(s, State::Failed(_)))
     }
 }
 
@@ -66,7 +71,10 @@ impl Sources {
                 .and_then(|out| pot::parse(&out).map_err(|e| format!("pot runs --json: {e}")))
                 .map_err(State::Failed),
         };
-        Sources { graft: on_path("graft"), pot }
+        Sources {
+            graft: on_path("graft"),
+            pot,
+        }
     }
 
     /// The `pins` fact for a checkout. graft runs only where `.gitmodules` exists: elsewhere there are none.
@@ -78,8 +86,14 @@ impl Sources {
             return Fact::known(Pins::default(), ".gitmodules", ctx.now);
         }
         let dir = checkout.to_string_lossy();
-        let result = run(graft, &["status", "-C", &dir, "--json"], &format!("graft status in {}", ctx.tilde(checkout)))
-            .and_then(|out| graft::parse(&out).map_err(|e| format!("graft status --json in {}: {e}", ctx.tilde(checkout))));
+        let result = run(
+            graft,
+            &["status", "-C", &dir, "--json"],
+            &format!("graft status in {}", ctx.tilde(checkout)),
+        )
+        .and_then(|out| {
+            graft::parse(&out).map_err(|e| format!("graft status --json in {}: {e}", ctx.tilde(checkout)))
+        });
         match result {
             Ok(pins) => Fact::known(pins, "graft", ctx.now),
             Err(reason) => Fact::unknown(reason, "graft", ctx.now),
@@ -90,7 +104,9 @@ impl Sources {
     pub fn runs(&self, ctx: &Context, checkout: &Path) -> Fact<Runs> {
         match &self.pot {
             Ok(runs) => Fact::known(pot::runs_in(runs, checkout), "pot", ctx.now),
-            Err(State::Absent(reason) | State::Failed(reason)) => Fact::unknown(reason.clone(), "pot", ctx.now),
+            Err(State::Absent(reason) | State::Failed(reason)) => {
+                Fact::unknown(reason.clone(), "pot", ctx.now)
+            }
             Err(State::Ok) => unreachable!("an error state is never Ok"),
         }
     }
@@ -108,7 +124,11 @@ impl Sources {
             Ok(_) => State::Ok,
             Err(state) => state.clone(),
         };
-        Report { git: State::Ok, graft, pot }
+        Report {
+            git: State::Ok,
+            graft,
+            pot,
+        }
     }
 }
 
@@ -123,7 +143,10 @@ fn run(program: &Path, args: &[&str], what: &str) -> std::result::Result<Vec<u8>
         return Ok(out.stdout);
     }
     let stderr = String::from_utf8_lossy(&out.stderr);
-    let first = stderr.lines().find(|l| !l.trim().is_empty()).unwrap_or("no message");
+    let first = stderr
+        .lines()
+        .find(|l| !l.trim().is_empty())
+        .unwrap_or("no message");
     Err(format!("{what} failed ({}): {first}", out.status))
 }
 
@@ -132,5 +155,8 @@ pub fn on_path(name: &str) -> Option<PathBuf> {
     use std::os::unix::fs::PermissionsExt;
     std::env::split_paths(&std::env::var_os("PATH")?)
         .map(|dir| dir.join(name))
-        .find(|p| p.metadata().is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0))
+        .find(|p| {
+            p.metadata()
+                .is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+        })
 }

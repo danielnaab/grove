@@ -1,7 +1,7 @@
 //! Run blocking work (git, graft) in parallel with scoped threads. No async runtime.
 
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 const WORKERS: usize = 8;
 
@@ -21,5 +21,10 @@ pub fn map<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R> 
             });
         }
     });
-    results.into_inner().expect("workers are done").into_iter().map(|r| r.expect("every item ran")).collect()
+    results
+        .into_inner()
+        .expect("workers are done")
+        .into_iter()
+        .map(|r| r.expect("every item ran"))
+        .collect()
 }

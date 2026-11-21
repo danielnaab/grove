@@ -22,7 +22,11 @@ struct Envelope<'a, T> {
 
 /// Print one `grove/1` JSON document on stdout.
 pub fn print_json(command: &str, body: impl Serialize) {
-    let doc = Envelope { schema: SCHEMA, command, body };
+    let doc = Envelope {
+        schema: SCHEMA,
+        command,
+        body,
+    };
     let text = serde_json::to_string_pretty(&doc).expect("grove's JSON models always serialize");
     println!("{text}");
 }
@@ -61,7 +65,14 @@ impl Table {
     pub fn render(&self, indent: &str) -> String {
         let columns = self.rows.iter().map(Vec::len).max().unwrap_or(0);
         let widths: Vec<usize> = (0..columns)
-            .map(|c| self.rows.iter().filter_map(|r| r.get(c)).map(|s| s.chars().count()).max().unwrap_or(0))
+            .map(|c| {
+                self.rows
+                    .iter()
+                    .filter_map(|r| r.get(c))
+                    .map(|s| s.chars().count())
+                    .max()
+                    .unwrap_or(0)
+            })
             .collect();
         let mut out = String::new();
         for row in &self.rows {
@@ -95,7 +106,11 @@ pub fn age(now: SystemTime, then: SystemTime) -> String {
 
 /// `1 repo`, `2 repos`.
 pub fn plural(n: usize, noun: &str) -> String {
-    if n == 1 { format!("{n} {noun}") } else { format!("{n} {noun}s") }
+    if n == 1 {
+        format!("{n} {noun}")
+    } else {
+        format!("{n} {noun}s")
+    }
 }
 
 #[cfg(test)]

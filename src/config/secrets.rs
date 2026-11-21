@@ -7,16 +7,38 @@
 //!
 //! Findings name the key path and the rule, never the value.
 
-const KEY_WORDS: &[&str] = &["token", "secret", "password", "passwd", "apikey", "api_key", "private_key"];
+const KEY_WORDS: &[&str] = &[
+    "token",
+    "secret",
+    "password",
+    "passwd",
+    "apikey",
+    "api_key",
+    "private_key",
+];
 
 /// Prefixes of well-known credential formats (GitHub, GitLab, Slack, AWS, OpenAI-style, Anthropic).
-const PREFIXES: &[&str] =
-    &["ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_", "glpat-", "xoxb-", "xoxp-", "AKIA", "sk-"];
+const PREFIXES: &[&str] = &[
+    "ghp_",
+    "gho_",
+    "ghu_",
+    "ghs_",
+    "ghr_",
+    "github_pat_",
+    "glpat-",
+    "xoxb-",
+    "xoxp-",
+    "AKIA",
+    "sk-",
+];
 
 /// Why a key name looks like it holds a secret.
 pub fn key(name: &str) -> Option<String> {
     let lower = name.to_ascii_lowercase();
-    KEY_WORDS.iter().find(|w| lower.contains(*w)).map(|w| format!("the key name contains \"{w}\""))
+    KEY_WORDS
+        .iter()
+        .find(|w| lower.contains(*w))
+        .map(|w| format!("the key name contains \"{w}\""))
 }
 
 /// Why a string value looks like a secret.
@@ -27,7 +49,10 @@ pub fn value(text: &str) -> Option<&'static str> {
     if url_has_password(text) {
         return Some("a URL with a password");
     }
-    if PREFIXES.iter().any(|p| text.starts_with(p) && text.len() >= p.len() + 16) {
+    if PREFIXES
+        .iter()
+        .any(|p| text.starts_with(p) && text.len() >= p.len() + 16)
+    {
         return Some("a known credential prefix");
     }
     if random_looking(text) {
@@ -37,9 +62,13 @@ pub fn value(text: &str) -> Option<&'static str> {
 }
 
 fn url_has_password(text: &str) -> bool {
-    let Some((_, rest)) = text.split_once("://") else { return false };
+    let Some((_, rest)) = text.split_once("://") else {
+        return false;
+    };
     let authority = rest.split('/').next().unwrap_or(rest);
-    authority.rsplit_once('@').is_some_and(|(userinfo, _)| userinfo.contains(':'))
+    authority
+        .rsplit_once('@')
+        .is_some_and(|(userinfo, _)| userinfo.contains(':'))
 }
 
 /// At least 32 characters, no path or glob characters or spaces, and high entropy.
@@ -70,18 +99,33 @@ mod tests {
 
     #[test]
     fn key_names() {
-        assert_eq!(key("api_token").as_deref(), Some("the key name contains \"token\""));
-        assert_eq!(key("GITHUB_PASSWORD").as_deref(), Some("the key name contains \"password\""));
+        assert_eq!(
+            key("api_token").as_deref(),
+            Some("the key name contains \"token\"")
+        );
+        assert_eq!(
+            key("GITHUB_PASSWORD").as_deref(),
+            Some("the key name contains \"password\"")
+        );
         assert_eq!(key("production"), None);
         assert_eq!(key("tools"), None);
     }
 
     #[test]
     fn values() {
-        assert_eq!(value("https://daniel:pw@git.example.org/x.git"), Some("a URL with a password"));
+        assert_eq!(
+            value("https://daniel:pw@git.example.org/x.git"),
+            Some("a URL with a password")
+        );
         assert_eq!(value("-----BEGIN OPENSSH PRIVATE KEY-----"), Some("a PEM header"));
-        assert_eq!(value("ghp_0123456789abcdefABCDEF0123"), Some("a known credential prefix"));
-        assert_eq!(value("q8Zt3LxV0pWm9RkC2yHn7BdF4sGj6UeA"), Some("a long random-looking string"));
+        assert_eq!(
+            value("ghp_0123456789abcdefABCDEF0123"),
+            Some("a known credential prefix")
+        );
+        assert_eq!(
+            value("q8Zt3LxV0pWm9RkC2yHn7BdF4sGj6UeA"),
+            Some("a long random-looking string")
+        );
     }
 
     #[test]

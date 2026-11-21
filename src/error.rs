@@ -30,7 +30,12 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 impl Error {
     pub fn new(message: impl Into<String>) -> Self {
-        Error { message: message.into(), details: Vec::new(), fix: None, try_: None }
+        Error {
+            message: message.into(),
+            details: Vec::new(),
+            fix: None,
+            try_: None,
+        }
     }
 
     #[must_use]

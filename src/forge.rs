@@ -15,7 +15,10 @@ pub struct Forge {
 
 /// The remote whose forge page grove shows: `origin` if present, else the first.
 pub fn primary(remotes: &[Remote]) -> Option<&Remote> {
-    remotes.iter().find(|r| r.name == "origin").or_else(|| remotes.first())
+    remotes
+        .iter()
+        .find(|r| r.name == "origin")
+        .or_else(|| remotes.first())
 }
 
 pub fn parse(url: &str) -> Option<Forge> {
@@ -36,11 +39,17 @@ pub fn parse(url: &str) -> Option<Forge> {
         }
         (left.rsplit_once('@').map_or(left, |(_, h)| h), path)
     };
-    let slug = path.trim_matches('/').trim_end_matches(".git").trim_end_matches('/');
+    let slug = path
+        .trim_matches('/')
+        .trim_end_matches(".git")
+        .trim_end_matches('/');
     if host.is_empty() || slug.is_empty() || !slug.contains('/') {
         return None;
     }
-    Some(Forge { url: format!("https://{host}/{slug}"), slug: slug.to_string() })
+    Some(Forge {
+        url: format!("https://{host}/{slug}"),
+        slug: slug.to_string(),
+    })
 }
 
 #[cfg(test)]
@@ -65,13 +74,25 @@ mod tests {
         ] {
             assert_eq!(page(url), want, "{url}");
         }
-        assert_eq!(page("https://host:8443/a/b.git").as_deref(), Some("https://host:8443/a/b"));
-        assert_eq!(parse("git@host:group/sub/name.git").unwrap().slug, "group/sub/name");
+        assert_eq!(
+            page("https://host:8443/a/b.git").as_deref(),
+            Some("https://host:8443/a/b")
+        );
+        assert_eq!(
+            parse("git@host:group/sub/name.git").unwrap().slug,
+            "group/sub/name"
+        );
     }
 
     #[test]
     fn local_remotes_have_no_forge_page() {
-        for url in ["/srv/git/beta.git", "../beta", "file:///srv/git/beta.git", "./x:y/z", "beta"] {
+        for url in [
+            "/srv/git/beta.git",
+            "../beta",
+            "file:///srv/git/beta.git",
+            "./x:y/z",
+            "beta",
+        ] {
             assert_eq!(page(url), None, "{url}");
         }
     }

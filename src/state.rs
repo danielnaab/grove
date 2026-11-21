@@ -34,7 +34,11 @@ pub struct RemoteOutcome {
 impl LastSync {
     pub fn new(at: SystemTime, remotes: Vec<RemoteOutcome>) -> Self {
         let failed = remotes.iter().any(|r| r.error.is_some());
-        LastSync { result: if failed { "failed" } else { "ok" }.into(), at: output::timestamp(at), remotes }
+        LastSync {
+            result: if failed { "failed" } else { "ok" }.into(),
+            at: output::timestamp(at),
+            remotes,
+        }
     }
 
     pub fn time(&self) -> Option<SystemTime> {
@@ -43,9 +47,17 @@ impl LastSync {
 
     /// `ok`, or `failed (origin)`.
     pub fn display(&self) -> String {
-        let failed: Vec<&str> =
-            self.remotes.iter().filter(|r| r.error.is_some()).map(|r| r.remote.as_str()).collect();
-        if failed.is_empty() { self.result.clone() } else { format!("{} ({})", self.result, failed.join(", ")) }
+        let failed: Vec<&str> = self
+            .remotes
+            .iter()
+            .filter(|r| r.error.is_some())
+            .map(|r| r.remote.as_str())
+            .collect();
+        if failed.is_empty() {
+            self.result.clone()
+        } else {
+            format!("{} ({})", self.result, failed.join(", "))
+        }
     }
 }
 
@@ -58,7 +70,10 @@ pub struct State {
 impl State {
     /// The saved state, or an empty one when there is none or it cannot be read (it is only a cache).
     pub fn load(dir: &Path) -> State {
-        std::fs::read(dir.join(FILE)).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default()
+        std::fs::read(dir.join(FILE))
+            .ok()
+            .and_then(|b| serde_json::from_slice(&b).ok())
+            .unwrap_or_default()
     }
 
     pub fn last_sync(&self, common_dir: &Path) -> Option<&LastSync> {

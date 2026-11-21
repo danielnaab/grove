@@ -28,7 +28,11 @@ impl Setup {
         let config = Config::load(&ctx.home)?;
         let repos = discover::discover(ctx, &config)?;
         let groups = Memberships::new(ctx, &config, &repos);
-        Ok(Setup { config, repos, groups })
+        Ok(Setup {
+            config,
+            repos,
+            groups,
+        })
     }
 
     pub fn target(&self, ctx: &Context, address: Option<&str>) -> Result<Target> {
@@ -59,19 +63,15 @@ impl Setup {
     /// Observe what a target names.
     pub fn observed(&self, observer: &Observer, target: &Target) -> (Vec<usize>, Vec<Observed>) {
         let which = self.indices(target);
-        let observed = observer.observe(&which);
-        let keep: Vec<bool> = observed
-            .iter()
-            .map(|o| match target {
-                Target::Derived(name) => o.in_derived(name),
+        let repos = observer.observe(&which);
+        which
+            .into_iter()
+            .zip(repos)
+            .filter(|(_, repo)| match target {
+                Target::Derived(name) => repo.in_derived(name),
                 _ => true,
             })
-            .collect();
-        let mut kept = keep.iter();
-        let which = which.into_iter().filter(|_| *kept.next().unwrap_or(&false)).collect();
-        let mut kept = keep.iter();
-        let observed = observed.into_iter().filter(|_| *kept.next().unwrap_or(&false)).collect();
-        (which, observed)
+            .unzip()
     }
 
     /// Exactly one repository, for `status` and `open`.

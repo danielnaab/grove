@@ -26,12 +26,20 @@ pub struct Runs {
 impl Runs {
     /// `-`, `1 running`, `1 running, 2 review`.
     pub fn display(&self) -> String {
-        let parts: Vec<String> = [("running", self.running), ("review", self.review), ("stopped", self.stopped)]
-            .into_iter()
-            .filter(|(_, n)| *n > 0)
-            .map(|(state, n)| format!("{n} {state}"))
-            .collect();
-        if parts.is_empty() { "-".into() } else { parts.join(", ") }
+        let parts: Vec<String> = [
+            ("running", self.running),
+            ("review", self.review),
+            ("stopped", self.stopped),
+        ]
+        .into_iter()
+        .filter(|(_, n)| *n > 0)
+        .map(|(state, n)| format!("{n} {state}"))
+        .collect();
+        if parts.is_empty() {
+            "-".into()
+        } else {
+            parts.join(", ")
+        }
     }
 }
 
@@ -73,7 +81,12 @@ pub fn parse(json: &[u8]) -> Result<Vec<Run>, String> {
         .into_iter()
         .map(|r| Run {
             state: r.state.unwrap_or_default(),
-            workspaces: r.workspace.into_iter().filter_map(|w| w.path).map(PathBuf::from).collect(),
+            workspaces: r
+                .workspace
+                .into_iter()
+                .filter_map(|w| w.path)
+                .map(PathBuf::from)
+                .collect(),
         })
         .collect())
 }
@@ -98,7 +111,11 @@ mod tests {
     use super::*;
 
     fn fixture(name: &str) -> Vec<u8> {
-        std::fs::read(format!("{}/tests/contracts/runs-1/{name}", env!("CARGO_MANIFEST_DIR"))).unwrap()
+        std::fs::read(format!(
+            "{}/tests/contracts/runs-1/{name}",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap()
     }
 
     #[test]
@@ -106,8 +123,20 @@ mod tests {
         let runs = parse(&fixture("list.json")).unwrap();
         assert_eq!(runs.len(), 4);
         let at = |p: &str| runs_in(&runs, Path::new(p));
-        assert_eq!(at("/home/daniel/src/flexion-assistant"), Runs { review: 1, ..Runs::default() });
-        assert_eq!(at("/home/daniel/src/graft"), Runs { stopped: 1, ..Runs::default() });
+        assert_eq!(
+            at("/home/daniel/src/flexion-assistant"),
+            Runs {
+                review: 1,
+                ..Runs::default()
+            }
+        );
+        assert_eq!(
+            at("/home/daniel/src/graft"),
+            Runs {
+                stopped: 1,
+                ..Runs::default()
+            }
+        );
         assert_eq!(at("/home/daniel/src/team-kb"), Runs::default()); // exited
         assert_eq!(at("/home/daniel/src/graft").display(), "1 stopped");
         assert_eq!(at("/elsewhere").display(), "-");
@@ -116,17 +145,28 @@ mod tests {
     #[test]
     fn a_single_record_is_one_run() {
         for name in ["9b0e", "41c7", "7d21", "c0f3"] {
-            assert_eq!(parse(&fixture(&format!("{name}.record.json"))).unwrap().len(), 1, "{name}");
+            assert_eq!(
+                parse(&fixture(&format!("{name}.record.json"))).unwrap().len(),
+                1,
+                "{name}"
+            );
         }
         // Inside a run, `pot runs --json` prints that run alone.
         let inside = parse(&fixture("inside-run.record.json")).unwrap();
-        assert_eq!(runs_in(&inside, Path::new("/home/daniel/src/graft")).display(), "1 running");
+        assert_eq!(
+            runs_in(&inside, Path::new("/home/daniel/src/graft")).display(),
+            "1 running"
+        );
     }
 
     #[test]
     fn lenient_but_versioned() {
-        let newer = br#"{"version": 1, "runs": [{"state": "pending", "workspace": [{"path": "/x", "new": 1}]}]}"#;
+        let newer =
+            br#"{"version": 1, "runs": [{"state": "pending", "workspace": [{"path": "/x", "new": 1}]}]}"#;
         assert_eq!(runs_in(&parse(newer).unwrap(), Path::new("/x")), Runs::default());
-        assert_eq!(parse(br#"{"version": 2, "runs": []}"#).unwrap_err(), "runs/2 is newer than grove reads (runs/1)");
+        assert_eq!(
+            parse(br#"{"version": 2, "runs": []}"#).unwrap_err(),
+            "runs/2 is newer than grove reads (runs/1)"
+        );
     }
 }

@@ -46,30 +46,47 @@ impl Memberships {
     /// Addresses in grove.toml that match no repository are left out.
     pub fn new(ctx: &Context, config: &Config, repos: &[Repo]) -> Memberships {
         let members = |addresses: &[String]| -> Vec<usize> {
-            let mut found: Vec<usize> = addresses.iter().filter_map(|a| find(ctx, repos, a).ok()).collect();
+            let mut found: Vec<usize> = addresses
+                .iter()
+                .filter_map(|a| find(ctx, repos, a).ok())
+                .collect();
             found.sort_unstable();
             found.dedup();
             found
         };
         Memberships {
-            tags: config.tags.iter().map(|t| (t.name.clone(), t.line, members(&t.addresses))).collect(),
-            production: config.production_on(&ctx.host).map(|p| (p.line, members(&p.addresses))),
+            tags: config
+                .tags
+                .iter()
+                .map(|t| (t.name.clone(), t.line, members(&t.addresses)))
+                .collect(),
+            production: config
+                .production_on(&ctx.host)
+                .map(|p| (p.line, members(&p.addresses))),
         }
     }
 
     pub fn tags_of(&self, repo: usize) -> impl Iterator<Item = &(String, usize, Vec<usize>)> {
-        self.tags.iter().filter(move |(_, _, members)| members.contains(&repo))
+        self.tags
+            .iter()
+            .filter(move |(_, _, members)| members.contains(&repo))
     }
 
     pub fn is_production(&self, repo: usize) -> bool {
-        self.production.as_ref().is_some_and(|(_, members)| members.contains(&repo))
+        self.production
+            .as_ref()
+            .is_some_and(|(_, members)| members.contains(&repo))
     }
 }
 
 /// Resolve an address (`None` = every repository).
 pub fn target(ctx: &Context, repos: &[Repo], groups: &Memberships, address: Option<&str>) -> Result<Target> {
-    let Some(address) = address else { return Ok(Target::All) };
-    let Some(group) = address.strip_prefix('@') else { return find(ctx, repos, address).map(Target::One) };
+    let Some(address) = address else {
+        return Ok(Target::All);
+    };
+    let Some(group) = address.strip_prefix('@') else {
+        return find(ctx, repos, address).map(Target::One);
+    };
     if DERIVED.contains(&group) {
         return Ok(Target::Derived(group.to_string()));
     }
@@ -106,7 +123,10 @@ pub fn find(ctx: &Context, repos: &[Repo], address: &str) -> Result<usize> {
         }
     }
     if address.contains('/') {
-        if let Some(i) = repos.iter().position(|r| r.forge.as_ref().is_some_and(|f| f.slug == address)) {
+        if let Some(i) = repos
+            .iter()
+            .position(|r| r.forge.as_ref().is_some_and(|f| f.slug == address))
+        {
             return Ok(i);
         }
         if Path::new(address).exists() {
@@ -122,9 +142,9 @@ fn looks_like_path(address: &str) -> bool {
 
 /// The repository with a checkout that contains `path` (the deepest, when checkouts nest).
 fn by_path(ctx: &Context, repos: &[Repo], path: &Path, address: &str) -> Result<usize> {
-    let path: PathBuf = path.canonicalize().map_err(|_| {
-        Error::new(format!("no such directory: {address}")).try_("grove ls --path")
-    })?;
+    let path: PathBuf = path
+        .canonicalize()
+        .map_err(|_| Error::new(format!("no such directory: {address}")).try_("grove ls --path"))?;
     repos
         .iter()
         .enumerate()

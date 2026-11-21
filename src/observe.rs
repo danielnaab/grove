@@ -60,20 +60,28 @@ impl Observed {
     }
 
     pub fn dirty(&self) -> bool {
-        self.checkouts.iter().any(|c| c.tree.get().is_some_and(|t| t.dirty))
+        self.checkouts
+            .iter()
+            .any(|c| c.tree.get().is_some_and(|t| t.dirty))
     }
 
     /// A checkout's branch is ahead of its upstream, or has none while the repository has a remote.
     pub fn unpushed(&self) -> bool {
-        self.checkouts.iter().any(|c| match (c.branch.get(), c.upstream.get()) {
-            (_, Some(Some(up))) => up.ahead.is_some_and(|n| n > 0),
-            (Some(Some(_)), Some(None)) => !self.local_only(),
-            _ => false,
-        })
+        self.checkouts
+            .iter()
+            .any(|c| match (c.branch.get(), c.upstream.get()) {
+                (_, Some(Some(up))) => up.ahead.is_some_and(|n| n > 0),
+                (Some(Some(_)), Some(None)) => !self.local_only(),
+                _ => false,
+            })
     }
 
     pub fn behind(&self) -> bool {
-        self.checkouts.iter().any(|c| c.upstream.get().is_some_and(|u| u.as_ref().and_then(|u| u.behind) > Some(0)))
+        self.checkouts.iter().any(|c| {
+            c.upstream
+                .get()
+                .is_some_and(|u| u.as_ref().and_then(|u| u.behind) > Some(0))
+        })
     }
 
     /// Is this repository in the derived group `@name`?
@@ -135,7 +143,11 @@ pub fn tree_display(tree: &Tree) -> String {
     .filter(|(_, n)| *n > 0)
     .map(|(what, n)| format!("{n} {what}"))
     .collect();
-    if parts.is_empty() { "clean".into() } else { parts.join(", ") }
+    if parts.is_empty() {
+        "clean".into()
+    } else {
+        parts.join(", ")
+    }
 }
 
 pub struct Observer<'a> {
@@ -154,12 +166,18 @@ impl Observer<'_> {
     }
 
     fn observe_one(&self, i: usize) -> Observed {
-        let (ctx, repo, now) = (self.ctx, &self.repos[i], self.ctx.now);
+        let (repo, now) = (&self.repos[i], self.ctx.now);
         let label = &self.config.label;
 
         let tags: Vec<_> = self.groups.tags_of(i).collect();
-        let tags_source = tags.first().map_or_else(|| label.clone(), |(_, line, _)| self.config.source(*line));
-        let tags = Fact::known(tags.iter().map(|(name, _, _)| name.clone()).collect(), tags_source, now);
+        let tags_source = tags
+            .first()
+            .map_or_else(|| label.clone(), |(_, line, _)| self.config.source(*line));
+        let tags = Fact::known(
+            tags.iter().map(|(name, _, _)| name.clone()).collect(),
+            tags_source,
+            now,
+        );
 
         let production = self.groups.is_production(i);
         let production_source = match &self.groups.production {
@@ -168,9 +186,11 @@ impl Observer<'_> {
         };
 
         let forge = match repo.primary_remote() {
-            Some(remote) => {
-                Fact::known(repo.forge.as_ref().map(|f| f.url.clone()), format!("remote {}", remote.name), now)
-            }
+            Some(remote) => Fact::known(
+                repo.forge.as_ref().map(|f| f.url.clone()),
+                format!("remote {}", remote.name),
+                now,
+            ),
             None => Fact::known(None, "git config", now),
         };
 
@@ -190,7 +210,11 @@ impl Observer<'_> {
             remotes: Fact::known(repo.remotes.clone(), "git config", now),
             forge,
             last_sync,
-            checkouts: repo.checkouts.iter().map(|c| self.checkout(&c.path, c.worktree)).collect(),
+            checkouts: repo
+                .checkouts
+                .iter()
+                .map(|c| self.checkout(&c.path, c.worktree))
+                .collect(),
         }
     }
 

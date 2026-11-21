@@ -22,7 +22,12 @@ impl Context {
             .map(PathBuf::from)
             .ok_or_else(|| Error::new("HOME is not set").try_("echo $HOME"))?;
         let home = home.canonicalize().unwrap_or(home);
-        Ok(Context { home, host: host(), now: SystemTime::now(), json })
+        Ok(Context {
+            home,
+            host: host(),
+            now: SystemTime::now(),
+            json,
+        })
     }
 
     /// A path for people: `~/src/beta`.
@@ -60,7 +65,9 @@ fn host() -> String {
     let from_file = std::fs::read_to_string("/proc/sys/kernel/hostname").ok();
     let from_command = || {
         let out = std::process::Command::new("hostname").output().ok()?;
-        out.status.success().then(|| String::from_utf8_lossy(&out.stdout).into_owned())
+        out.status
+            .success()
+            .then(|| String::from_utf8_lossy(&out.stdout).into_owned())
     };
     from_file
         .or_else(from_command)

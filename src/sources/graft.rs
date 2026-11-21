@@ -21,14 +21,14 @@ impl Pins {
         if self.scions == 0 && self.problems == 0 {
             return "-".into();
         }
-        let mut text = self.scions.to_string();
+        let mut parts = vec![self.scions.to_string()];
         if self.outdated > 0 {
-            text.push_str(&format!(", {} outdated", self.outdated));
+            parts.push(format!("{} outdated", self.outdated));
         }
         if self.problems > 0 {
-            text.push_str(&format!(", {}", crate::output::plural(self.problems, "problem")));
+            parts.push(crate::output::plural(self.problems, "problem"));
         }
-        text
+        parts.join(", ")
     }
 }
 
@@ -58,7 +58,10 @@ struct Latest {
 pub fn parse(json: &[u8]) -> Result<Pins, String> {
     let report: Report = serde_json::from_slice(json).map_err(|e| format!("not status/1 JSON: {e}"))?;
     if report.version != 1 {
-        return Err(format!("status/{} is newer than grove reads (status/1)", report.version));
+        return Err(format!(
+            "status/{} is newer than grove reads (status/1)",
+            report.version
+        ));
     }
     Ok(Pins {
         scions: report.scions.len(),
@@ -76,15 +79,39 @@ mod tests {
     use super::*;
 
     fn fixture(name: &str) -> Pins {
-        let path = format!("{}/tests/contracts/status-1/{name}.json", env!("CARGO_MANIFEST_DIR"));
+        let path = format!(
+            "{}/tests/contracts/status-1/{name}.json",
+            env!("CARGO_MANIFEST_DIR")
+        );
         parse(&std::fs::read(path).unwrap()).unwrap()
     }
 
     #[test]
     fn golden_fixtures() {
-        assert_eq!(fixture("clean"), Pins { scions: 2, outdated: 1, problems: 1 });
-        assert_eq!(fixture("problems"), Pins { scions: 2, outdated: 0, problems: 5 });
-        assert_eq!(fixture("offline"), Pins { scions: 2, outdated: 0, problems: 1 });
+        assert_eq!(
+            fixture("clean"),
+            Pins {
+                scions: 2,
+                outdated: 1,
+                problems: 1
+            }
+        );
+        assert_eq!(
+            fixture("problems"),
+            Pins {
+                scions: 2,
+                outdated: 0,
+                problems: 5
+            }
+        );
+        assert_eq!(
+            fixture("offline"),
+            Pins {
+                scions: 2,
+                outdated: 0,
+                problems: 1
+            }
+        );
         assert_eq!(fixture("no-scions"), Pins::default());
         assert_eq!(fixture("clean").display(), "2, 1 outdated, 1 problem");
         assert_eq!(fixture("no-scions").display(), "-");
@@ -92,9 +119,20 @@ mod tests {
 
     #[test]
     fn lenient_but_versioned() {
-        let newer = br#"{"version": 1, "scions": [{"latest": {"status": "someday"}, "new": 1}], "extra": true}"#;
-        assert_eq!(parse(newer), Ok(Pins { scions: 1, outdated: 0, problems: 0 }));
-        assert_eq!(parse(br#"{"version": 2}"#), Err("status/2 is newer than grove reads (status/1)".into()));
+        let newer =
+            br#"{"version": 1, "scions": [{"latest": {"status": "someday"}, "new": 1}], "extra": true}"#;
+        assert_eq!(
+            parse(newer),
+            Ok(Pins {
+                scions: 1,
+                outdated: 0,
+                problems: 0
+            })
+        );
+        assert_eq!(
+            parse(br#"{"version": 2}"#),
+            Err("status/2 is newer than grove reads (status/1)".into())
+        );
         assert!(parse(b"not json").is_err());
     }
 }

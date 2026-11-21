@@ -21,11 +21,19 @@ pub struct Fact<T> {
 
 impl<T> Fact<T> {
     pub fn known(value: T, source: impl Into<String>, observed_at: SystemTime) -> Self {
-        Fact { value: Ok(value), source: source.into(), observed_at }
+        Fact {
+            value: Ok(value),
+            source: source.into(),
+            observed_at,
+        }
     }
 
     pub fn unknown(reason: impl Into<String>, source: impl Into<String>, observed_at: SystemTime) -> Self {
-        Fact { value: Err(reason.into()), source: source.into(), observed_at }
+        Fact {
+            value: Err(reason.into()),
+            source: source.into(),
+            observed_at,
+        }
     }
 
     pub fn get(&self) -> Option<&T> {
@@ -34,11 +42,17 @@ impl<T> Fact<T> {
 
     /// The human source column: `git, now`, `grove state, 3m ago`, `graft: not found on PATH, now`.
     pub fn provenance(&self, now: SystemTime) -> String {
-        let when = if self.observed_at >= now { "now".to_string() } else { output::age(now, self.observed_at) };
+        let when = if self.observed_at >= now {
+            "now".to_string()
+        } else {
+            output::age(now, self.observed_at)
+        };
         match &self.value {
             Ok(_) => format!("{}, {when}", self.source),
             Err(reason) => {
-                let reason = reason.strip_prefix(&format!("{} ", self.source)).unwrap_or(reason);
+                let reason = reason
+                    .strip_prefix(&format!("{} ", self.source))
+                    .unwrap_or(reason);
                 format!("{}: {reason}, {when}", self.source)
             }
         }

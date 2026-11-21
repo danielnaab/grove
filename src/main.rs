@@ -59,9 +59,9 @@ fn run(ctx: &Context, command: Command) -> error::Result<Exit> {
         Command::Status { address } => commands::status::run(ctx, &address),
         Command::Sync { address } => commands::sync::run(ctx, address.as_deref()),
         Command::Open { address, print } => commands::open::run(ctx, &address, print),
-        Command::Config { command: ConfigCommand::Check { file } } => {
-            commands::config_check::run(ctx, file.as_deref())
-        }
+        Command::Config {
+            command: ConfigCommand::Check { file },
+        } => commands::config_check::run(ctx, file.as_deref()),
     }
 }
 

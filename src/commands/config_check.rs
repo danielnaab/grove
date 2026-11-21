@@ -12,7 +12,7 @@ use crate::exit::Exit;
 use crate::output::{self, Table};
 
 #[derive(Serialize)]
-struct Value<'a> {
+struct Setting<'a> {
     key: &'a str,
     value: &'a serde_json::Value,
     line: usize,
@@ -25,7 +25,7 @@ struct Body<'a> {
     commit: Option<&'a str>,
     working_tree_differs: Option<bool>,
     host: &'a str,
-    values: Vec<Value<'a>>,
+    values: Vec<Setting<'a>>,
     problems: Vec<String>,
 }
 
@@ -38,14 +38,31 @@ pub fn run(ctx: &Context, file: Option<&Path>) -> Result<Exit> {
 
     if ctx.json {
         let (file, commit, differs) = match &config.origin {
-            Origin::Head { commit, working_tree_differs, .. } => {
-                (Some(head_file), Some(commit.as_str()), Some(*working_tree_differs))
-            }
-            Origin::File(path) => (Some(path.canonicalize().unwrap_or_else(|_| path.clone())), None, None),
-            Origin::Defaults { .. } => (None, None, None),
+            Origin::Head {
+                commit,
+                working_tree_differs,
+                ..
+            } => (
+                Some(head_file),
+                Some(commit.as_str()),
+                Some(*working_tree_differs),
+            ),
+            Origin::File(path) => (
+                Some(path.canonicalize().unwrap_or_else(|_| path.clone())),
+                None,
+                None,
+            ),
+            Origin::Defaults => (None, None, None),
         };
-        let values =
-            config.entries.iter().map(|e| Value { key: &e.key, value: &e.value, line: e.line }).collect();
+        let values = config
+            .entries
+            .iter()
+            .map(|e| Setting {
+                key: &e.key,
+                value: &e.value,
+                line: e.line,
+            })
+            .collect();
         let body = Body {
             ok: true,
             file,
@@ -65,28 +82,37 @@ pub fn run(ctx: &Context, file: Option<&Path>) -> Result<Exit> {
         match &config.origin {
             Origin::Head { commit, .. } => format!("ok: {head} at HEAD ({})", &commit[..7.min(commit.len())]),
             Origin::File(_) => format!("ok: {} (a draft: grove reads {head} at HEAD)", config.label),
-            Origin::Defaults { .. } => format!("ok: no {head} at HEAD, so grove uses the defaults"),
+            Origin::Defaults => format!("ok: no {head} at HEAD, so grove uses the defaults"),
         }
     );
     let mut table = Table::default();
     for entry in &config.entries {
         table.row([entry.key.clone(), show(&entry.value), config.source(entry.line)]);
     }
-    if matches!(config.origin, Origin::Defaults { .. }) {
+    if matches!(config.origin, Origin::Defaults) {
         table.row(["discover.scan".into(), config.scan.join(", "), "default".into()]);
     }
     print!("{}", table.render("  "));
 
     let mut notes = Vec::new();
     if let Some(production) = config.production_on(&ctx.host) {
-        let verb = if production.addresses.len() == 1 { "is" } else { "are" };
+        let verb = if production.addresses.len() == 1 {
+            "is"
+        } else {
+            "are"
+        };
         notes.push(format!(
             "this host is {}: {} {verb} production here (observed only)",
             ctx.host,
             production.addresses.join(", ")
         ));
     }
-    if let Origin::Head { repo, working_tree_differs: true, .. } = &config.origin {
+    if let Origin::Head {
+        repo,
+        working_tree_differs: true,
+        ..
+    } = &config.origin
+    {
         notes.push("note: grove.toml in the working tree differs from HEAD, and grove reads HEAD".into());
         notes.push(format!("  fix: git -C {} commit {REPO_PATH}", ctx.tilde(repo)));
     }

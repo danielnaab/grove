@@ -86,7 +86,11 @@ pub fn run(ctx: &Context, address: Option<&str>) -> Result<Exit> {
 
     record(ctx, &setup.repos, &rows)?;
     let summary = summarize(&which, &rows);
-    let exit = if summary.failed > 0 { Exit::Partial } else { Exit::Ok };
+    let exit = if summary.failed > 0 {
+        Exit::Partial
+    } else {
+        Exit::Ok
+    };
 
     if ctx.json {
         #[derive(Serialize)]
@@ -94,7 +98,13 @@ pub fn run(ctx: &Context, address: Option<&str>) -> Result<Exit> {
             results: &'a [Row],
             summary: &'a Summary,
         }
-        output::print_json("sync", Body { results: &rows, summary: &summary });
+        output::print_json(
+            "sync",
+            Body {
+                results: &rows,
+                summary: &summary,
+            },
+        );
         return Ok(exit);
     }
 
@@ -111,7 +121,11 @@ pub fn run(ctx: &Context, address: Option<&str>) -> Result<Exit> {
             Outcome::NoRemotes => "no remotes".into(),
         };
         let repo = &setup.repos[row.repo_index];
-        let (name, sync) = if first { (row.repo.clone(), sync_after(repo)) } else { (String::new(), String::new()) };
+        let (name, sync) = if first {
+            (row.repo.clone(), sync_after(repo))
+        } else {
+            (String::new(), String::new())
+        };
         table.row([name, row.remote.clone().unwrap_or_default(), result, sync]);
     }
     print!("{}", table.render(""));
@@ -151,7 +165,10 @@ fn fetch(repo: &Repo, i: usize, remote: &str) -> Result<Row> {
 
 /// The main checkout's SYNC state, read again after the fetch.
 fn sync_after(repo: &Repo) -> String {
-    let upstream = git::status(&repo.path).ok().and_then(Result::ok).map(|s| s.upstream);
+    let upstream = git::status(&repo.path)
+        .ok()
+        .and_then(Result::ok)
+        .map(|s| s.upstream);
     sync_state(repo.remotes.is_empty(), upstream.as_ref())
 }
 
@@ -162,7 +179,12 @@ fn record(ctx: &Context, repos: &[Repo], rows: &[Row]) -> Result<()> {
         let Some(remote) = &row.remote else { continue };
         let outcome = RemoteOutcome {
             remote: remote.clone(),
-            result: if row.result == Outcome::Failed { "failed" } else { "ok" }.into(),
+            result: if row.result == Outcome::Failed {
+                "failed"
+            } else {
+                "ok"
+            }
+            .into(),
             error: row.error.clone(),
         };
         match syncs.last_mut() {
@@ -173,12 +195,18 @@ fn record(ctx: &Context, repos: &[Repo], rows: &[Row]) -> Result<()> {
     if syncs.is_empty() {
         return Ok(());
     }
-    let syncs = syncs.into_iter().map(|(i, o)| (repos[i].common_dir.as_path(), LastSync::new(ctx.now, o))).collect();
+    let syncs = syncs
+        .into_iter()
+        .map(|(i, o)| (repos[i].common_dir.as_path(), LastSync::new(ctx.now, o)))
+        .collect();
     State::record(&ctx.state_dir(), syncs)
 }
 
 fn summarize(which: &[usize], rows: &[Row]) -> Summary {
-    let mut summary = Summary { repos: which.len(), ..Summary::default() };
+    let mut summary = Summary {
+        repos: which.len(),
+        ..Summary::default()
+    };
     for &i in which {
         let mine: Vec<&Row> = rows.iter().filter(|r| r.repo_index == i).collect();
         match mine.first().map(|r| r.result) {
@@ -203,6 +231,14 @@ fn summary_line(ctx: &Context, s: &Summary) -> String {
     if s.local_only > 0 {
         parts.push(format!("{} local only", s.local_only));
     }
-    let detail = if parts.is_empty() { String::new() } else { format!(": {}", parts.join(", ")) };
-    format!("fetched {} of {}{detail}. Nothing was merged or checked out.", s.fetched, plural(s.repos, "repo"))
+    let detail = if parts.is_empty() {
+        String::new()
+    } else {
+        format!(": {}", parts.join(", "))
+    };
+    format!(
+        "fetched {} of {}{detail}. Nothing was merged or checked out.",
+        s.fetched,
+        plural(s.repos, "repo")
+    )
 }

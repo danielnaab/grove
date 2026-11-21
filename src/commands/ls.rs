@@ -37,18 +37,22 @@ pub fn run(ctx: &Context, address: Option<&str>, paths_only: bool) -> Result<Exi
     let target = setup.target(ctx, address)?;
 
     if paths_only && !matches!(target, Target::Derived(_)) {
-        let paths: Vec<_> = setup.indices(&target).into_iter().map(|i| setup.repos[i].path.clone()).collect();
+        let paths: Vec<_> = setup
+            .indices(&target)
+            .into_iter()
+            .map(|i| setup.repos[i].path.clone())
+            .collect();
         print_paths(ctx, &paths);
         return Ok(Exit::Ok);
     }
 
-    let observer = setup.observer(ctx);
-    let (_, observed) = setup.observed(&observer, &target);
+    let reader = setup.observer(ctx);
+    let (_, observed) = setup.observed(&reader, &target);
     if paths_only {
         print_paths(ctx, &observed.iter().map(|o| o.path.clone()).collect::<Vec<_>>());
         return Ok(Exit::Ok);
     }
-    let report = observer.report(&observed);
+    let report = reader.report(&observed);
     let exit = if report.partial() { Exit::Partial } else { Exit::Ok };
 
     if ctx.json {
@@ -58,13 +62,23 @@ pub fn run(ctx: &Context, address: Option<&str>, paths_only: bool) -> Result<Exi
             summary: Summary,
             sources: &'a Report,
         }
-        output::print_json("ls", Body { repos: &observed, summary: Summary::of(&observed), sources: &report });
+        output::print_json(
+            "ls",
+            Body {
+                repos: &observed,
+                summary: Summary::of(&observed),
+                sources: &report,
+            },
+        );
         return Ok(exit);
     }
 
     let group = target.group();
     if observed.is_empty() {
-        println!("no repos{}", group.map(|g| format!(" in {g}")).unwrap_or_default());
+        println!(
+            "no repos{}",
+            group.map(|g| format!(" in {g}")).unwrap_or_default()
+        );
         return Ok(exit);
     }
     print!("{}", table(ctx, &observed).render(""));
@@ -97,7 +111,11 @@ fn table(ctx: &Context, observed: &[Observed]) -> Table {
     for repo in observed {
         for checkout in &repo.checkouts {
             let name = if checkout.worktree {
-                let dir = checkout.path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                let dir = checkout
+                    .path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default();
                 format!("└ {dir}")
             } else {
                 repo.name.clone()
@@ -107,15 +125,28 @@ fn table(ctx: &Context, observed: &[Observed]) -> Table {
                 Ok(None) => "(detached)".into(),
                 Err(_) => "?".into(),
             };
-            let tree = checkout.tree.get().map_or("?", |t| if t.dirty { "dirty" } else { "clean" });
-            let fetched = if checkout.worktree { String::new() } else { repo.fetched_display(ctx.now) };
+            let tree = checkout
+                .tree
+                .get()
+                .map_or("?", |t| if t.dirty { "dirty" } else { "clean" });
+            let fetched = if checkout.worktree {
+                String::new()
+            } else {
+                repo.fetched_display(ctx.now)
+            };
             table.row([
                 name,
                 branch,
                 tree.to_string(),
                 repo.sync_state(checkout),
-                checkout.pins.get().map_or_else(|| "?".into(), crate::sources::Pins::display),
-                checkout.runs.get().map_or_else(|| "?".into(), crate::sources::Runs::display),
+                checkout
+                    .pins
+                    .get()
+                    .map_or_else(|| "?".into(), crate::sources::Pins::display),
+                checkout
+                    .runs
+                    .get()
+                    .map_or_else(|| "?".into(), crate::sources::Runs::display),
                 fetched,
             ]);
         }
@@ -127,13 +158,17 @@ fn table(ctx: &Context, observed: &[Observed]) -> Table {
 fn summary_line(summary: &Summary, group: Option<&str>) -> String {
     let mut line = plural(summary.repos, "repo");
     if let Some(group) = group {
-        line.push_str(&format!(" in {group}"));
+        line = format!("{line} in {group}");
     }
-    let parts: Vec<String> = [("dirty", summary.dirty), ("unpushed", summary.unpushed), ("behind", summary.behind)]
-        .into_iter()
-        .filter(|(_, n)| *n > 0)
-        .map(|(what, n)| format!("{n} {what}"))
-        .collect();
+    let parts: Vec<String> = [
+        ("dirty", summary.dirty),
+        ("unpushed", summary.unpushed),
+        ("behind", summary.behind),
+    ]
+    .into_iter()
+    .filter(|(_, n)| *n > 0)
+    .map(|(what, n)| format!("{n} {what}"))
+    .collect();
     if !parts.is_empty() {
         line.push_str(": ");
         line.push_str(&parts.join(", "));

@@ -29,11 +29,15 @@ pub const REPO_PATH: &str = "grove/grove.toml";
 #[derive(Debug, Clone)]
 pub enum Origin {
     /// `grove/grove.toml` at HEAD of the config repository.
-    Head { repo: PathBuf, commit: String, working_tree_differs: bool },
+    Head {
+        repo: PathBuf,
+        commit: String,
+        working_tree_differs: bool,
+    },
     /// A file read as written (`config check --file`).
     File(PathBuf),
     /// Nothing committed: the defaults.
-    Defaults { repo: PathBuf },
+    Defaults,
 }
 
 /// One value and the line that set it.
@@ -70,17 +74,25 @@ impl Config {
     /// What grove uses: `grove/grove.toml` at HEAD of `~/.workstation`, else the defaults.
     pub fn load(home: &Path) -> Result<Config> {
         let repo = home.join(".workstation");
-        let head = if repo.is_dir() { git::rev_parse(&repo, "HEAD")? } else { None };
+        let head = if repo.is_dir() {
+            git::rev_parse(&repo, "HEAD")?
+        } else {
+            None
+        };
         let text = match &head {
             Some(_) => git::show(&repo, "HEAD", REPO_PATH)?,
             None => None,
         };
         let (Some(commit), Some(text)) = (head, text) else {
-            return Ok(Config::defaults(Origin::Defaults { repo }));
+            return Ok(Config::defaults(Origin::Defaults));
         };
         let working_tree_differs = git::differs_from_head(&repo, REPO_PATH)?;
         let fix = format!("$EDITOR {}", repo.join(REPO_PATH).display());
-        let origin = Origin::Head { repo, commit, working_tree_differs };
+        let origin = Origin::Head {
+            repo,
+            commit,
+            working_tree_differs,
+        };
         parse(&text, "grove.toml", &fix, origin)
     }
 
@@ -89,7 +101,12 @@ impl Config {
         let label = path.display().to_string();
         let text = std::fs::read_to_string(path)
             .map_err(|e| Error::new(format!("cannot read {label}: {e}")).try_(format!("ls -l {label}")))?;
-        parse(&text, &label, &format!("$EDITOR {label}"), Origin::File(path.to_path_buf()))
+        parse(
+            &text,
+            &label,
+            &format!("$EDITOR {label}"),
+            Origin::File(path.to_path_buf()),
+        )
     }
 
     fn defaults(origin: Origin) -> Config {
@@ -130,16 +147,29 @@ fn parse(text: &str, label: &str, fix: &str, origin: Origin) -> Result<Config> {
     scan_secrets(text, root, "", &mut findings);
     if !findings.is_empty() {
         findings.sort_by_key(|(line, _)| *line);
-        let details = findings.into_iter().map(|(line, what)| format!("{label}:{line}: {what}")).collect();
-        return Err(Error::new(format!("{label} looks like it contains secrets (values not shown)"))
-            .details(details)
-            .fix(format!("{fix}, then rotate any secret that was ever committed")));
+        let details = findings
+            .into_iter()
+            .map(|(line, what)| format!("{label}:{line}: {what}"))
+            .collect();
+        return Err(Error::new(format!(
+            "{label} looks like it contains secrets (values not shown)"
+        ))
+        .details(details)
+        .fix(format!("{fix}, then rotate any secret that was ever committed")));
     }
 
-    let mut schema = Schema { text, config: Config::defaults(origin), problems: Vec::new() };
+    let mut schema = Schema {
+        text,
+        config: Config::defaults(origin),
+        problems: Vec::new(),
+    };
     schema.config.label = label.to_string();
     schema.root(root);
-    let Schema { mut config, mut problems, .. } = schema;
+    let Schema {
+        mut config,
+        mut problems,
+        ..
+    } = schema;
     match problems.len() {
         0 => {
             config.entries.sort_by_key(|e| e.line);
@@ -151,14 +181,23 @@ fn parse(text: &str, label: &str, fix: &str, origin: Origin) -> Result<Config> {
         }
         n => {
             problems.sort_by_key(|(line, _)| *line);
-            let details = problems.into_iter().map(|(line, what)| format!("{label}:{line}: {what}")).collect();
-            Err(Error::new(format!("{label} has {n} problems")).details(details).fix(fix))
+            let details = problems
+                .into_iter()
+                .map(|(line, what)| format!("{label}:{line}: {what}"))
+                .collect();
+            Err(Error::new(format!("{label} has {n} problems"))
+                .details(details)
+                .fix(fix))
         }
     }
 }
 
 fn join(path: &str, key: &str) -> String {
-    if path.is_empty() { key.to_string() } else { format!("{path}.{key}") }
+    if path.is_empty() {
+        key.to_string()
+    } else {
+        format!("{path}.{key}")
+    }
 }
 
 /// Every key and string value, depth first. Findings are `(line, "KEY.PATH: rule")`.
@@ -238,7 +277,10 @@ impl Schema<'_> {
 
     fn strings(&mut self, value: &Spanned<DeValue<'_>>, key: &str) -> Option<Vec<String>> {
         let strings = match value.get_ref() {
-            DeValue::Array(items) => items.iter().map(|i| i.get_ref().as_str().map(ToString::to_string)).collect(),
+            DeValue::Array(items) => items
+                .iter()
+                .map(|i| i.get_ref().as_str().map(ToString::to_string))
+                .collect(),
             _ => None,
         };
         if strings.is_none() {
@@ -254,19 +296,21 @@ impl Schema<'_> {
     fn root(&mut self, root: &DeTable<'_>) {
         let mut version = false;
         for (key, value) in in_order(root) {
-            let line = self.line(&key.span());
             match key.get_ref().as_ref() {
                 "version" => {
                     version = true;
                     let one = matches!(value.get_ref(), DeValue::Integer(i) if i.as_str() == "1");
                     if one {
+                        let line = self.line(&key.span());
                         self.entry("version".into(), json!(1), line);
                     } else {
                         self.problem(&value.span(), "version must be 1".into());
                     }
                 }
                 "discover" => {
-                    let Some(table) = self.table(value, "discover") else { continue };
+                    let Some(table) = self.table(value, "discover") else {
+                        continue;
+                    };
                     for (key, value) in in_order(table) {
                         let line = self.line(&key.span());
                         let name = key.get_ref().as_ref();
@@ -275,7 +319,9 @@ impl Schema<'_> {
                             continue;
                         }
                         let path = join("discover", name);
-                        let Some(globs) = self.strings(value, &path) else { continue };
+                        let Some(globs) = self.strings(value, &path) else {
+                            continue;
+                        };
                         self.entry(path, json!(globs), line);
                         if name == "scan" {
                             self.config.scan = globs;
@@ -285,7 +331,9 @@ impl Schema<'_> {
                     }
                 }
                 "tags" => {
-                    let Some(table) = self.table(value, "tags") else { continue };
+                    let Some(table) = self.table(value, "tags") else {
+                        continue;
+                    };
                     for (key, value) in in_order(table) {
                         let line = self.line(&key.span());
                         let name = key.get_ref().to_string();
@@ -294,17 +342,27 @@ impl Schema<'_> {
                             self.problem(&key.span(), format!("{path}: @{name} is a derived group"));
                             continue;
                         }
-                        let Some(addresses) = self.strings(value, &path) else { continue };
+                        let Some(addresses) = self.strings(value, &path) else {
+                            continue;
+                        };
                         self.entry(path, json!(addresses), line);
-                        self.config.tags.push(Named { name, addresses, line });
+                        self.config.tags.push(Named {
+                            name,
+                            addresses,
+                            line,
+                        });
                     }
                 }
                 "hosts" => {
-                    let Some(hosts) = self.table(value, "hosts") else { continue };
+                    let Some(hosts) = self.table(value, "hosts") else {
+                        continue;
+                    };
                     for (host, value) in in_order(hosts) {
                         let host = host.get_ref().to_string();
                         let path = join("hosts", &host);
-                        let Some(table) = self.table(value, &path) else { continue };
+                        let Some(table) = self.table(value, &path) else {
+                            continue;
+                        };
                         for (key, value) in in_order(table) {
                             let line = self.line(&key.span());
                             if key.get_ref() != "production" {
@@ -312,18 +370,24 @@ impl Schema<'_> {
                                 continue;
                             }
                             let path = join(&path, "production");
-                            let Some(addresses) = self.strings(value, &path) else { continue };
+                            let Some(addresses) = self.strings(value, &path) else {
+                                continue;
+                            };
                             self.entry(path, json!(addresses), line);
-                            self.config.production.push(Named { name: host.clone(), addresses, line });
+                            self.config.production.push(Named {
+                                name: host.clone(),
+                                addresses,
+                                line,
+                            });
                         }
                     }
                 }
                 other => self.unknown(&key.span(), "", other, &["version", "discover", "tags", "hosts"]),
             }
-            let _ = line;
         }
         if !version {
-            self.problems.push((1, "version is missing (add version = 1)".into()));
+            self.problems
+                .push((1, "version is missing (add version = 1)".into()));
         }
     }
 }
@@ -335,7 +399,9 @@ fn edit_distance(a: &str, b: &str) -> usize {
         let mut prev = row[0];
         row[0] = i + 1;
         for (j, cb) in b.iter().enumerate() {
-            let next = (prev + usize::from(ca != *cb)).min(row[j] + 1).min(row[j + 1] + 1);
+            let next = (prev + usize::from(ca != *cb))
+                .min(row[j] + 1)
+                .min(row[j + 1] + 1);
             prev = row[j + 1];
             row[j + 1] = next;
         }
@@ -365,8 +431,11 @@ mod tests {
         assert_eq!(err.message, "t.toml:1: version must be 1");
         let err = check("version = 1\n[tags]\ndirty = [\"a\"]\n").unwrap_err();
         assert_eq!(err.message, "t.toml:3: tags.dirty: @dirty is a derived group");
-        let err = check("version = 1\n[hosts.h]\nprod = [\"a\"]\n").unwrap_err();
-        assert_eq!(err.message, "t.toml:3: unknown key hosts.h.prod (did you mean hosts.h.production?)");
+        let err = check("version = 1\n[hosts.h]\nprodution = [\"a\"]\n").unwrap_err();
+        assert_eq!(
+            err.message,
+            "t.toml:3: unknown key hosts.h.prodution (did you mean hosts.h.production?)"
+        );
     }
 
     #[test]

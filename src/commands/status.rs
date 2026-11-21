@@ -29,7 +29,13 @@ pub fn run(ctx: &Context, address: &str) -> Result<Exit> {
             repo: &'a Observed,
             sources: &'a Report,
         }
-        output::print_json("status", Body { repo: &repo, sources: &report });
+        output::print_json(
+            "status",
+            Body {
+                repo: &repo,
+                sources: &report,
+            },
+        );
     } else {
         print!("{}", render(ctx, &repo));
     }
@@ -46,7 +52,8 @@ impl Section {
 
     fn row<T>(&mut self, ctx: &Context, label: &str, fact: &Fact<T>, show: impl Fn(&T) -> String) {
         let value = fact.get().map_or_else(|| "?".into(), show);
-        self.0.row([format!("{label:<LABEL_WIDTH$}"), value, fact.provenance(ctx.now)]);
+        self.0
+            .row([format!("{label:<LABEL_WIDTH$}"), value, fact.provenance(ctx.now)]);
     }
 
     fn render(&self) -> String {
@@ -66,9 +73,11 @@ fn render(ctx: &Context, repo: &Observed) -> String {
 
     for checkout in &repo.checkouts {
         let worktree = if checkout.worktree { "  (worktree)" } else { "" };
-        out.push_str(&format!("\n{}{worktree}\n", ctx.tilde(&checkout.path)));
+        out = format!("{out}\n{}{worktree}\n", ctx.tilde(&checkout.path));
         let mut section = Section::new();
-        section.row(ctx, "branch", &checkout.branch, |b| b.clone().unwrap_or_else(|| "(detached)".into()));
+        section.row(ctx, "branch", &checkout.branch, |b| {
+            b.clone().unwrap_or_else(|| "(detached)".into())
+        });
         section.row(ctx, "tree", &checkout.tree, tree_display);
         section.row(ctx, "upstream", &checkout.upstream, |u| match u {
             None => "none".into(),
@@ -92,20 +101,36 @@ fn render(ctx: &Context, repo: &Observed) -> String {
         Some(remotes) if !remotes.is_empty() => {
             let meta = clone_meta(&repo.remotes);
             for remote in remotes {
-                section.row(ctx, "remote", &meta, |()| format!("{} {}", remote.name, remote.url));
+                section.row(ctx, "remote", &meta, |()| {
+                    format!("{} {}", remote.name, remote.url)
+                });
             }
         }
         _ => section.row(ctx, "remote", &repo.remotes, |_| "none".into()),
     }
-    section.row(ctx, "forge", &repo.forge, |f| f.clone().unwrap_or_else(|| "none".into()));
+    section.row(ctx, "forge", &repo.forge, |f| {
+        f.clone().unwrap_or_else(|| "none".into())
+    });
     section.row(ctx, "tags", &repo.tags, |tags| {
-        if tags.is_empty() { "none".into() } else { tags.iter().map(|t| format!("@{t}")).collect::<Vec<_>>().join(", ") }
+        if tags.is_empty() {
+            "none".into()
+        } else {
+            tags.iter()
+                .map(|t| format!("@{t}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        }
     });
     section.row(ctx, "production", &repo.production, |p| {
-        if *p { format!("yes, on {}: observed only", ctx.host) } else { "no".into() }
+        if *p {
+            format!("yes, on {}: observed only", ctx.host)
+        } else {
+            "no".into()
+        }
     });
     section.row(ctx, "last sync", &repo.last_sync, |s| {
-        s.as_ref().map_or_else(|| "none recorded".into(), crate::state::LastSync::display)
+        s.as_ref()
+            .map_or_else(|| "none recorded".into(), crate::state::LastSync::display)
     });
     out.push_str(&section.render());
     out
@@ -113,5 +138,9 @@ fn render(ctx: &Context, repo: &Observed) -> String {
 
 /// A fact's source and time, for a row that shows one part of its value.
 fn clone_meta<T>(fact: &Fact<T>) -> Fact<()> {
-    Fact { value: Ok(()), source: fact.source.clone(), observed_at: fact.observed_at }
+    Fact {
+        value: Ok(()),
+        source: fact.source.clone(),
+        observed_at: fact.observed_at,
+    }
 }

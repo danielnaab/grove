@@ -78,13 +78,29 @@ pub fn discover(ctx: &Context, config: &Config) -> Result<Vec<Repo>> {
         let main = paths[0].clone();
         let mut worktrees: Vec<PathBuf> = paths[1..].iter().filter(|p| !ignored(p)).cloned().collect();
         worktrees.sort();
-        let checkouts = std::iter::once(Checkout { path: main.clone(), worktree: false })
-            .chain(worktrees.into_iter().map(|path| Checkout { path, worktree: true }))
-            .collect();
+        let checkouts = std::iter::once(Checkout {
+            path: main.clone(),
+            worktree: false,
+        })
+        .chain(
+            worktrees
+                .into_iter()
+                .map(|path| Checkout { path, worktree: true }),
+        )
+        .collect();
         let remotes = git::remotes(&main)?;
         let forge = forge::primary(&remotes).and_then(|r| forge::parse(&r.url));
-        let name = main.file_name().map_or_else(|| main.display().to_string(), |n| n.to_string_lossy().into());
-        Ok(Repo { name, path: main, common_dir: common_dir.clone(), checkouts, remotes, forge })
+        let name = main
+            .file_name()
+            .map_or_else(|| main.display().to_string(), |n| n.to_string_lossy().into());
+        Ok(Repo {
+            name,
+            path: main,
+            common_dir: common_dir.clone(),
+            checkouts,
+            remotes,
+            forge,
+        })
     });
     let mut repos = repos.into_iter().collect::<Result<Vec<_>>>()?;
     repos.sort_by(|a, b| a.name.cmp(&b.name).then_with(|| a.path.cmp(&b.path)));

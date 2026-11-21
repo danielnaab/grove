@@ -38,13 +38,15 @@ fn read(dir: &Path, args: &[&str]) -> Result<Option<String>> {
     let mut cmd = git(dir);
     cmd.args(args);
     let out = run(cmd)?;
-    Ok(out.status.success().then(|| String::from_utf8_lossy(&out.stdout).into_owned()))
+    Ok(out
+        .status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).into_owned()))
 }
 
 /// What `git rev-parse` says about a directory that might be a checkout.
 pub struct Probe {
     pub toplevel: PathBuf,
-    pub git_dir: PathBuf,
     pub common_dir: PathBuf,
 }
 
@@ -52,16 +54,21 @@ pub struct Probe {
 pub fn probe(dir: &Path) -> Result<Option<Probe>> {
     let Some(out) = read(
         dir,
-        &["rev-parse", "--path-format=absolute", "--show-toplevel", "--git-dir", "--git-common-dir"],
+        &[
+            "rev-parse",
+            "--path-format=absolute",
+            "--show-toplevel",
+            "--git-common-dir",
+        ],
     )?
     else {
         return Ok(None);
     };
     let mut lines = out.lines().map(|l| canonical(Path::new(l)));
-    let (Some(toplevel), Some(git_dir), Some(common_dir)) = (lines.next(), lines.next(), lines.next()) else {
+    let (Some(toplevel), Some(common_dir)) = (lines.next(), lines.next()) else {
         return Ok(None);
     };
-    Ok((toplevel == canonical(dir)).then_some(Probe { toplevel, git_dir, common_dir }))
+    Ok((toplevel == canonical(dir)).then_some(Probe { toplevel, common_dir }))
 }
 
 /// The worktree paths that `git worktree list` records, main checkout first. Missing ones are left out.
@@ -91,7 +98,10 @@ pub fn remotes(dir: &Path) -> Result<Vec<Remote>> {
         .filter_map(|line| {
             let (key, url) = line.split_once(' ')?;
             let name = key.strip_prefix("remote.")?.strip_suffix(".url")?;
-            Some(Remote { name: name.to_string(), url: url.to_string() })
+            Some(Remote {
+                name: name.to_string(),
+                url: url.to_string(),
+            })
         })
         .collect())
 }
@@ -154,9 +164,16 @@ fn parse_status(text: &str) -> Status {
         if let Some(head) = line.strip_prefix("# branch.head ") {
             status.branch = (head != "(detached)").then(|| head.to_string());
         } else if let Some(name) = line.strip_prefix("# branch.upstream ") {
-            status.upstream = Some(Upstream { name: name.to_string(), ahead: None, behind: None, gone: true });
+            status.upstream = Some(Upstream {
+                name: name.to_string(),
+                ahead: None,
+                behind: None,
+                gone: true,
+            });
         } else if let Some(counts) = line.strip_prefix("# branch.ab ") {
-            let mut parts = counts.split(' ').map(|n| n.trim_start_matches(['+', '-']).parse().ok());
+            let mut parts = counts
+                .split(' ')
+                .map(|n| n.trim_start_matches(['+', '-']).parse().ok());
             ab = Some((parts.next().flatten(), parts.next().flatten()));
         } else {
             let tree = &mut status.tree;
@@ -191,7 +208,16 @@ pub struct Fetch {
 /// Prompts are off, so a remote that needs a password fails instead of waiting. `Err` is git's message.
 pub fn fetch(dir: &Path, remote: &str) -> Result<std::result::Result<Fetch, String>> {
     let mut cmd = git(dir);
-    cmd.args(["-c", "gc.auto=0", "-c", "maintenance.auto=false", "fetch", "--porcelain", "--", remote]);
+    cmd.args([
+        "-c",
+        "gc.auto=0",
+        "-c",
+        "maintenance.auto=false",
+        "fetch",
+        "--porcelain",
+        "--",
+        remote,
+    ]);
     let out = run(cmd)?;
     if !out.status.success() {
         return Ok(Err(first_line(&out.stderr)));
@@ -200,7 +226,12 @@ pub fn fetch(dir: &Path, remote: &str) -> Result<std::result::Result<Fetch, Stri
         .lines()
         .filter(|l| !l.starts_with('='))
         .filter_map(|l| l.rsplit(' ').next())
-        .map(|r| r.strip_prefix("refs/remotes/").or_else(|| r.strip_prefix("refs/")).unwrap_or(r).to_string())
+        .map(|r| {
+            r.strip_prefix("refs/remotes/")
+                .or_else(|| r.strip_prefix("refs/"))
+                .unwrap_or(r)
+                .to_string()
+        })
         .collect();
     Ok(Ok(Fetch { updated }))
 }
@@ -225,8 +256,14 @@ pub fn differs_from_head(dir: &Path, path: &str) -> Result<bool> {
 /// git's first message line, without `fatal: ` or `error: `.
 fn first_line(stderr: &[u8]) -> String {
     let text = String::from_utf8_lossy(stderr);
-    let line = text.lines().find(|l| !l.trim().is_empty()).unwrap_or("git failed");
-    line.strip_prefix("fatal: ").or_else(|| line.strip_prefix("error: ")).unwrap_or(line).to_string()
+    let line = text
+        .lines()
+        .find(|l| !l.trim().is_empty())
+        .unwrap_or("git failed");
+    line.strip_prefix("fatal: ")
+        .or_else(|| line.strip_prefix("error: "))
+        .unwrap_or(line)
+        .to_string()
 }
 
 /// `path` with symlinks resolved, or as given when it cannot be.
@@ -247,11 +284,22 @@ mod tests {
         assert_eq!(status.branch.as_deref(), Some("main"));
         assert_eq!(
             status.upstream,
-            Some(Upstream { name: "origin/main".into(), ahead: Some(2), behind: Some(1), gone: false })
+            Some(Upstream {
+                name: "origin/main".into(),
+                ahead: Some(2),
+                behind: Some(1),
+                gone: false
+            })
         );
         assert_eq!(
             status.tree,
-            Tree { dirty: true, staged: 1, modified: 1, untracked: 1, conflicted: 1 }
+            Tree {
+                dirty: true,
+                staged: 1,
+                modified: 1,
+                untracked: 1,
+                conflicted: 1
+            }
         );
     }
 

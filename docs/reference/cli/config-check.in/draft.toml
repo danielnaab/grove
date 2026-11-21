@@ -1,0 +1,7 @@
+version = 1
+
+[discover]
+scan = ["~/src/*"]
+
+[tags]
+tools = ["alpha", "beta", "delta"]

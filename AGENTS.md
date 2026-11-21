@@ -1,7 +1,7 @@
 # grove: agent instructions
 
 grove keeps a person's git checkouts in view. It is **read only**, and it is the first Rust code of a tool
-family (grove, pot, Espalier). The conventions below are the family's shared dev kit. Follow them here, and copy
+family (grove, pot, tuteur). The conventions below are the family's shared dev kit. Follow them here, and copy
 them when you start the next tool.
 
 Orientation: [README.md](README.md). Design: [docs/concepts/](docs/concepts/). CLI behavior is specified by the
@@ -85,10 +85,10 @@ transcripts in [docs/reference/cli/](docs/reference/cli/), which are also the te
 - `runs/1` from `pot runs --json` and `status/1` from `graft status --json`. Their JSON Schemas and golden
   fixtures live in graft's repository. grove treats them as data: it parses them leniently, ignores unknown
   fields, and turns a missing or unreadable source into `unknown` facts.
-- The readers live in `src/sources/` behind one boundary (`Source`). Nothing else in grove knows the contracts'
+- The readers live in `src/sources/` behind one boundary (`Sources`). Nothing else in grove knows the contracts'
   shapes. Tests drive them with the golden fixtures through stub `pot` and `graft` scripts on `PATH`.
-- Status (2026-11-21): **waiting on the schemas and fixtures.** Until they land, `pins` and `runs` are always
-  `unknown`.
+- Status (2026-11-21): the schemas and golden fixtures are copied into [tests/contracts/](tests/contracts/)
+  from graft's `contracts` branch (commit noted there). Copy them again when a contract changes.
 
 ## Docs
 

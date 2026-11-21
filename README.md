@@ -39,9 +39,9 @@ An ADDRESS is a name (`beta`), `owner/name`, a path, `.`, or a group (`@tools`, 
 
 ## Status
 
-**G0, pre-1.0 (0.1.0). Not built yet.** The CLI is specified by the transcripts in
-[docs/reference/cli/](docs/reference/cli/). Code lands test-first against them. pins and runs wait on the
-`status/1` and `runs/1` contracts from graft's repository.
+**G0, pre-1.0 (0.1.0).** Every command in the table is built and passes its transcript in
+[docs/reference/cli/](docs/reference/cli/). pins and runs come from graft's `status/1` and pot's `runs/1`
+contracts, tested against their golden fixtures in [tests/contracts/](tests/contracts/).
 
 ## Docs
 

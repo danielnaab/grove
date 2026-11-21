@@ -28,16 +28,18 @@ bare repository. So `grove open` sees a forge URL, and `grove sync` fetches offl
 
 ## How the tests run it
 
-`tests/transcripts.rs` (not written yet; it lands with the first code) does this:
+`tests/transcripts.rs` does this:
 
 1. Build one world in a temporary directory for the read-only transcripts, and a second one for
    `sync.md`, which fetches and changes remote-tracking refs.
 2. Run grove with this environment: `HOME=<world>/home`, `GROVE_HOST=testhost`, `PATH` holding only a
    symlink to `git` (so `graft`, `pot` and `xdg-open` are absent), `BROWSER=`, `NO_COLOR=1`, `TZ=UTC`,
-   `GIT_CONFIG_NOSYSTEM=1`.
+   `GIT_CONFIG_NOSYSTEM=1`, `GIT_CONFIG_GLOBAL=/dev/null`, and `XDG_STATE_HOME` inside the world. trycmd
+   inherits the test's environment otherwise, so every variable that could reach outside the world is set.
 3. Register the `[HOME]` substitution and run `trycmd` over `docs/reference/cli/*.md`. Each `NAME.in/`
    directory next to a transcript (for example `config-check.in/`) is copied into a sandbox and becomes the
    working directory.
 
-When the `runs/1` and `status/1` golden fixtures land, `PATH` also gets stub `pot` and `graft` scripts that print
-them, and the `pins` and `runs` columns stop being `?`.
+The integration tests (`tests/*.rs`, helpers in `tests/common/`) build the same world and run grove with
+`env_clear()` and the same environment. `tests/contracts.rs` adds stub `pot` and `graft` scripts to `PATH` that
+print the golden `runs/1` and `status/1` fixtures, so the `pins` and `runs` columns stop being `?`.

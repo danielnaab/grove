@@ -88,15 +88,7 @@ impl Observed {
 
     /// The SYNC column for a checkout: `even`, `↑2`, `↓1`, `↑2 ↓1`, `no upstream`, `gone`, `local only`.
     pub fn sync_state(&self, checkout: &CheckoutFacts) -> String {
-        if self.local_only() {
-            return "local only".into();
-        }
-        match &checkout.upstream.value {
-            Err(_) => "?".into(),
-            Ok(None) => "no upstream".into(),
-            Ok(Some(up)) if up.gone => "gone".into(),
-            Ok(Some(up)) => ahead_behind(up),
-        }
+        sync_state(self.local_only(), checkout.upstream.value.as_ref().ok())
     }
 
     /// The FETCHED column: `4s ago`, `never`, or `-` when there is no remote.
@@ -107,6 +99,17 @@ impl Observed {
             Some(None) => "never".into(),
             None => "?".into(),
         }
+    }
+}
+
+/// The SYNC column, from whether the repository has remotes and a checkout's upstream (`None`: unknown).
+pub fn sync_state(local_only: bool, upstream: Option<&Option<Upstream>>) -> String {
+    match upstream {
+        _ if local_only => "local only".into(),
+        None => "?".into(),
+        Some(None) => "no upstream".into(),
+        Some(Some(up)) if up.gone => "gone".into(),
+        Some(Some(up)) => ahead_behind(up),
     }
 }
 

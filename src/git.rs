@@ -97,8 +97,15 @@ pub fn remotes(dir: &Path) -> Result<Vec<Remote>> {
 }
 
 /// When the repository was last fetched, by anyone: the mtime of `FETCH_HEAD`.
+///
+/// git empties `FETCH_HEAD` when a fetch starts and fills it when one succeeds, so an empty file records only a
+/// failed attempt, and counts as no fetch.
 pub fn fetched_at(common_dir: &Path) -> Option<SystemTime> {
-    std::fs::metadata(common_dir.join("FETCH_HEAD")).and_then(|m| m.modified()).ok()
+    let meta = std::fs::metadata(common_dir.join("FETCH_HEAD")).ok()?;
+    if meta.len() == 0 {
+        return None;
+    }
+    meta.modified().ok()
 }
 
 /// A checkout's branch, upstream and tree, from one `git status`.

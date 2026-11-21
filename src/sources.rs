@@ -128,7 +128,7 @@ fn run(program: &Path, args: &[&str], what: &str) -> std::result::Result<Vec<u8>
 }
 
 /// An executable named `name` on `PATH`.
-fn on_path(name: &str) -> Option<PathBuf> {
+pub fn on_path(name: &str) -> Option<PathBuf> {
     use std::os::unix::fs::PermissionsExt;
     std::env::split_paths(&std::env::var_os("PATH")?)
         .map(|dir| dir.join(name))

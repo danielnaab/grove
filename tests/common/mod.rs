@@ -90,3 +90,53 @@ pub fn which(program: &str) -> PathBuf {
         .find(|path| path.is_file())
         .unwrap_or_else(|| panic!("{program} not found on PATH"))
 }
+
+impl World {
+    /// Run git in the world (to set up a case), with the world's environment. Panics on failure.
+    pub fn git(&self, dir: &Path, args: &[&str]) -> String {
+        let out = Command::new(which("git"))
+            .env_clear()
+            .envs(self.env())
+            .env("GIT_AUTHOR_NAME", "Fixture")
+            .env("GIT_AUTHOR_EMAIL", "fixture@example.org")
+            .env("GIT_COMMITTER_NAME", "Fixture")
+            .env("GIT_COMMITTER_EMAIL", "fixture@example.org")
+            .arg("-C")
+            .arg(dir)
+            .args(args)
+            .output()
+            .expect("git runs");
+        assert!(
+            out.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    }
+
+    pub fn src(&self, name: &str) -> PathBuf {
+        self.home.join("src").join(name)
+    }
+}
+
+/// What grove ran: exit code, stdout, stderr.
+pub struct Run {
+    pub code: i32,
+    pub stdout: String,
+    pub stderr: String,
+}
+
+impl Run {
+    pub fn json(&self) -> serde_json::Value {
+        serde_json::from_str(&self.stdout).unwrap_or_else(|e| panic!("not JSON ({e}): {}", self.stdout))
+    }
+}
+
+pub fn run(mut cmd: Command) -> Run {
+    let out = cmd.output().expect("grove runs");
+    Run {
+        code: out.status.code().expect("an exit code"),
+        stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+    }
+}

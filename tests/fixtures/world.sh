@@ -26,6 +26,9 @@ root=$(cd "$root" && pwd -P)
 [ -z "$(ls -A "$root")" ] || { echo "world.sh: $root is not empty" >&2; exit 1; }
 
 export HOME="$root/home"
+# GIT_CONFIG_COUNT and GIT_CONFIG_PARAMETERS carry config past GIT_CONFIG_GLOBAL (an agent's commit signing, for
+# one), and a signed commit's ID changes on every run
+unset GIT_CONFIG_COUNT GIT_CONFIG_PARAMETERS
 export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0 TZ=UTC LC_ALL=C
 export GIT_AUTHOR_NAME=Fixture GIT_AUTHOR_EMAIL=fixture@example.org
 export GIT_COMMITTER_NAME=Fixture GIT_COMMITTER_EMAIL=fixture@example.org

@@ -38,7 +38,7 @@ A **fact** looks like this:
 An unknown fact has `unknown` (the reason) and no `value`:
 
 ```json
-{ "unknown": "graft not found on PATH", "source": "graft", "observed_at": "2026-11-21T17:02:11Z" }
+{ "unknown": "tuteur not found on PATH", "source": "tuteur", "observed_at": "2026-11-21T17:02:11Z" }
 ```
 
 `grove/1` grows by adding fields. Renaming or removing one is `grove/2`. Paths in JSON are absolute. The

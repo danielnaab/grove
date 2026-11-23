@@ -1,17 +1,18 @@
-//! `graft status -C CHECKOUT --json`, contract `status/1` (see `tests/contracts/`).
+//! `tuteur status -C CHECKOUT --json` (or graft's, until the last checkouts move), contract `status/1` (see
+//! `tests/contracts/`). The contract keeps graft's field names: `scions` are tuteur's patterns.
 //!
 //! Read leniently: unknown fields are ignored, and a `latest.status` grove does not know counts as nothing.
 
 use serde::{Deserialize, Serialize};
 
-/// What grove shows of a checkout's graft pins.
+/// What grove shows of a checkout's pins: its tuteur patterns.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct Pins {
-    /// Scions in the checkout.
+    /// Patterns in the checkout (`scions` in `status/1`).
     pub scions: usize,
-    /// Scions with a newer release of their major version.
+    /// Patterns with a newer release of their major version.
     pub outdated: usize,
-    /// `graft check`'s messages, for the repository and each scion.
+    /// `tuteur check`'s messages, for the repository and each pattern.
     pub problems: usize,
 }
 

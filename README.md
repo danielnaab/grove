@@ -8,7 +8,7 @@ sources:
 # grove
 
 grove keeps your git checkouts in view. It lists every checkout under `~/src` with its branch, uncommitted
-changes, ahead/behind, graft pins and pot runs, and it can fetch them all at once. It is **read only**. It never
+changes, ahead/behind, tuteur pins and pot runs, and it can fetch them all at once. It is **read only**. It never
 changes a branch, index or working tree, and `grove sync` only fetches.
 
 ```console
@@ -22,7 +22,7 @@ gamma      main     clean  ↓1           ?     ?     4s ago
 └ feature  feature  clean  no upstream  ?     ?
 
 5 repos: 1 dirty, 3 unpushed, 1 behind
-? pins: graft not found on PATH
+? pins: tuteur not found on PATH
 ? runs: pot not found on PATH
 ```
 
@@ -40,7 +40,7 @@ An ADDRESS is a name (`beta`), `owner/name`, a path, `.`, or a group (`@tools`, 
 ## Status
 
 **G0, pre-1.0 (0.1.0).** Every command in the table is built and passes its transcript in
-[docs/reference/cli/](docs/reference/cli/). pins and runs come from graft's `status/1` and pot's `runs/1`
+[docs/reference/cli/](docs/reference/cli/). pins and runs come from tuteur's `status/1` and pot's `runs/1`
 contracts, tested against their golden fixtures in [tests/contracts/](tests/contracts/).
 
 ## Docs

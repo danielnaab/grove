@@ -9,7 +9,7 @@ sources:
 
 Each page is a transcript: commands as you would type them, their exit code (`? N`, when not 0), and their
 exact output. The pages are also grove's tests (see [develop and test grove](../../guides/develop.md)). They
-run in the [fixture world](../../../tests/fixtures/README.md), on host `testhost`, where `graft` and `pot` are
+run in the [fixture world](../../../tests/fixtures/README.md), on host `testhost`, where `tuteur` and `pot` are
 not installed. That is why pins and runs show as `?`.
 
 - [`grove ls`](ls.md): list repositories

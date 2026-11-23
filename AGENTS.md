@@ -82,13 +82,14 @@ transcripts in [docs/reference/cli/](docs/reference/cli/), which are also the te
 
 ## Contracts grove reads
 
-- `runs/1` from `pot runs --json` and `status/1` from `graft status --json`. Their JSON Schemas and golden
-  fixtures live in graft's repository. grove treats them as data: it parses them leniently, ignores unknown
+- `runs/1` from `pot runs --json` and `status/1` from `tuteur status --json` (graft's, when tuteur is not on
+  `PATH`: tuteur 0.1.x reads graft's layout, so grove picks the tool by `PATH`, not per checkout). Their JSON
+  Schemas and golden fixtures live in tuteur's and pot's repositories. grove treats them as data: it parses them leniently, ignores unknown
   fields, and turns a missing or unreadable source into `unknown` facts.
 - The readers live in `src/sources/` behind one boundary (`Sources`). Nothing else in grove knows the contracts'
-  shapes. Tests drive them with the golden fixtures through stub `pot` and `graft` scripts on `PATH`.
-- Status (2026-11-21): the schemas and golden fixtures are copied into [tests/contracts/](tests/contracts/)
-  from graft's `contracts` branch (commit noted there). Copy them again when a contract changes.
+  shapes. Tests drive them with the golden fixtures through stub `pot`, `tuteur` and `graft` scripts on `PATH`.
+- Status (2026-11-22): the schemas and golden fixtures are copied into [tests/contracts/](tests/contracts/)
+  (`status/1` from tuteur v0.1.0; commits noted there). Copy them again when a contract changes.
 
 ## Docs
 

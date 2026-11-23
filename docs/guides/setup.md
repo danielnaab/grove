@@ -19,7 +19,7 @@ sources:
    ignore = ["~/src/scratch"]
 
    [tags]
-   tools = ["grove", "pot", "graft"]
+   tools = ["grove", "pot", "tuteur"]
 
    [hosts.platform-vm]
    production = ["homelab"]

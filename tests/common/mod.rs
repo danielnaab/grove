@@ -1,8 +1,8 @@
 //! The fixture world for integration tests: a throwaway HOME built by `tests/fixtures/world.sh`.
 //!
 //! grove runs with a clean environment pointed at the world, so no test touches the real `~/src`,
-//! `~/.workstation` or `~/.local/state`. `PATH` holds only `git` (plus any stubs a test adds), so `graft`, `pot`
-//! and `xdg-open` are absent.
+//! `~/.workstation` or `~/.local/state`. `PATH` holds only `git` (plus any stubs a test adds), so `tuteur`,
+//! `graft`, `pot` and `xdg-open` are absent.
 #![allow(dead_code)] // each test binary uses a different part of this module
 
 use std::path::{Path, PathBuf};

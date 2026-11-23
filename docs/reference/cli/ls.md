@@ -13,7 +13,7 @@ worktrees indented under it. It never fetches: ahead and behind are as of the la
 |---|---|
 | `TREE` | `clean`, or `dirty` (staged, modified, untracked or conflicted files) |
 | `SYNC` | `even`, `↑N` ahead, `↓N` behind, `↑N ↓M`, `no upstream`, `gone` (the upstream branch was deleted), or `local only` (no remotes) |
-| `PINS` | graft pins (`status/1`). `?` when unknown |
+| `PINS` | tuteur patterns (`status/1`): how many, how many outdated, how many problems. `?` when unknown |
 | `RUNS` | pot runs in this checkout (`runs/1`). `?` when unknown |
 | `FETCHED` | how long ago the repository was last fetched, by anyone (`FETCH_HEAD`). `never` if no fetch is recorded, `-` if there are no remotes |
 
@@ -28,7 +28,7 @@ gamma      main     clean  ↓1           ?     ?     [..]
 └ feature  feature  clean  no upstream  ?     ?
 
 5 repos: 1 dirty, 3 unpushed, 1 behind
-? pins: graft not found on PATH
+? pins: tuteur not found on PATH
 ? runs: pot not found on PATH
 
 ```
@@ -46,7 +46,7 @@ REPO  BRANCH  TREE   SYNC  PINS  RUNS  FETCHED
 beta  main    dirty  ↑2    ?     ?     [..]
 
 1 repo in @dirty: 1 dirty, 1 unpushed
-? pins: graft not found on PATH
+? pins: tuteur not found on PATH
 ? runs: pot not found on PATH
 
 $ grove ls @unpushed
@@ -57,7 +57,7 @@ gamma      main     clean  ↓1           ?     ?     [..]
 └ feature  feature  clean  no upstream  ?     ?
 
 3 repos in @unpushed: 1 dirty, 3 unpushed, 1 behind
-? pins: graft not found on PATH
+? pins: tuteur not found on PATH
 ? runs: pot not found on PATH
 
 $ grove ls @tools
@@ -66,7 +66,7 @@ alpha  main    clean  even  ?     ?     [..]
 beta   main    dirty  ↑2    ?     ?     [..]
 
 2 repos in @tools: 1 dirty, 1 unpushed
-? pins: graft not found on PATH
+? pins: tuteur not found on PATH
 ? runs: pot not found on PATH
 
 $ grove ls @behind
@@ -75,7 +75,7 @@ gamma      main     clean  ↓1           ?     ?     [..]
 └ feature  feature  clean  no upstream  ?     ?
 
 1 repo in @behind: 1 unpushed, 1 behind
-? pins: graft not found on PATH
+? pins: tuteur not found on PATH
 ? runs: pot not found on PATH
 
 ```
@@ -196,8 +196,8 @@ $ grove ls beta --json
             "observed_at": "[..]"
           },
           "pins": {
-            "unknown": "graft not found on PATH",
-            "source": "graft",
+            "unknown": "tuteur not found on PATH",
+            "source": "tuteur",
             "observed_at": "[..]"
           },
           "runs": {
@@ -219,9 +219,9 @@ $ grove ls beta --json
     "git": {
       "state": "ok"
     },
-    "graft": {
+    "tuteur": {
       "state": "absent",
-      "detail": "graft not found on PATH"
+      "detail": "tuteur not found on PATH"
     },
     "pot": {
       "state": "absent",

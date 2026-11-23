@@ -29,4 +29,4 @@ You name repositories with an address (design record, "Addressing"). There is no
 | `@unpushed` | some checkout's branch is ahead of its upstream, or has no upstream while the repository has a remote |
 | `@behind` | some checkout's branch is behind its upstream, as of the last fetch |
 
-`@consumers:P` (repositories that pin P) comes after G0, from graft's `status/1`.
+`@consumers:P` (repositories that pin P) comes after G0, from tuteur's `status/1`.

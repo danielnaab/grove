@@ -18,7 +18,7 @@ beta  daniel/beta  ~/src/beta
   branch      main                     git, now
   tree        1 modified, 1 untracked  git, now
   upstream    origin/main ↑2           git, now
-  pins        ?                        graft: not found on PATH, now
+  pins        ?                        tuteur: not found on PATH, now
   runs        ?                        pot: not found on PATH, now
 
 repository
@@ -41,14 +41,14 @@ gamma  daniel/gamma  ~/src/gamma  production on testhost: observed only
   branch      main            git, now
   tree        clean           git, now
   upstream    origin/main ↓1  git, now
-  pins        ?               graft: not found on PATH, now
+  pins        ?               tuteur: not found on PATH, now
   runs        ?               pot: not found on PATH, now
 
 ~/src/worktrees/gamma/feature  (worktree)
   branch      feature  git, now
   tree        clean    git, now
   upstream    none     git, now
-  pins        ?        graft: not found on PATH, now
+  pins        ?        tuteur: not found on PATH, now
   runs        ?        pot: not found on PATH, now
 
 repository
@@ -148,8 +148,8 @@ $ grove status delta --json
           "observed_at": "[..]"
         },
         "pins": {
-          "unknown": "graft not found on PATH",
-          "source": "graft",
+          "unknown": "tuteur not found on PATH",
+          "source": "tuteur",
           "observed_at": "[..]"
         },
         "runs": {
@@ -164,9 +164,9 @@ $ grove status delta --json
     "git": {
       "state": "ok"
     },
-    "graft": {
+    "tuteur": {
       "state": "absent",
-      "detail": "graft not found on PATH"
+      "detail": "tuteur not found on PATH"
     },
     "pot": {
       "state": "absent",

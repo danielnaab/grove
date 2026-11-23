@@ -31,7 +31,7 @@ alpha  main    clean  ↓1    ?     ?     [..]
 beta   main    dirty  ↑2    ?     ?     [..]
 
 2 repos in @tools: 1 dirty, 1 unpushed, 1 behind
-? pins: graft not found on PATH
+? pins: tuteur not found on PATH
 ? runs: pot not found on PATH
 
 ```
@@ -59,7 +59,7 @@ epsilon  daniel/epsilon  ~/src/epsilon
   branch      main   git, now
   tree        clean  git, now
   upstream    none   git, now
-  pins        ?      graft: not found on PATH, now
+  pins        ?      tuteur: not found on PATH, now
   runs        ?      pot: not found on PATH, now
 
 repository

@@ -1,5 +1,5 @@
-//! The contracts grove reads, driven by their golden fixtures (`tests/contracts/`) through stub `graft` and `pot`
-//! scripts on `PATH`.
+//! The contracts grove reads, driven by their golden fixtures (`tests/contracts/`) through stub `tuteur`, `graft`
+//! and `pot` scripts on `PATH`.
 
 mod common;
 
@@ -15,15 +15,36 @@ fn fixture(path: &str) -> String {
         .to_string()
 }
 
-/// delta gets a `.gitmodules`, so grove asks graft about it. graft prints `status/1`'s `clean.json`.
-/// pot prints `runs/1`'s `list.json`, with the review run's workspace moved to alpha.
-fn with_stubs(world: &World, graft: &str, pot: &str) {
+/// delta gets a `.gitmodules`, so grove asks the pins tool (`tuteur`, or `graft`) about it. pot prints
+/// `runs/1`'s `list.json`, with the review run's workspace moved to alpha.
+fn with_stubs(world: &World, pins: &[(&str, &str)], pot: &str) {
     let delta = world.src("delta");
     std::fs::write(delta.join(".gitmodules"), "").unwrap();
     world.git(&delta, &["add", ".gitmodules"]);
-    world.git(&delta, &["commit", "-q", "-m", "scions"]);
-    world.stub("graft", graft);
+    world.git(&delta, &["commit", "-q", "-m", "patterns"]);
+    for (name, script) in pins {
+        world.stub(name, script);
+    }
     world.stub("pot", pot);
+}
+
+/// A stub that prints `status/1`'s `clean.json`.
+fn clean(world: &World, name: &str) -> String {
+    printing(
+        world,
+        name,
+        &std::fs::read_to_string(fixture("status-1/clean.json")).unwrap(),
+    )
+}
+
+fn delta_pins(json: &serde_json::Value) -> serde_json::Value {
+    json["repos"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["name"] == "delta")
+        .unwrap()["checkouts"][0]["pins"]
+        .clone()
 }
 
 /// A stub that prints `text` (written next to the world, so the stub needs only `cat`).
@@ -50,12 +71,8 @@ fn pot_list(world: &World) -> String {
 #[test]
 fn pins_and_runs_from_the_golden_fixtures() {
     let world = World::build();
-    let graft = printing(
-        &world,
-        "graft",
-        &std::fs::read_to_string(fixture("status-1/clean.json")).unwrap(),
-    );
-    with_stubs(&world, &graft, &pot_list(&world));
+    let tuteur = clean(&world, "tuteur");
+    with_stubs(&world, &[("tuteur", &tuteur)], &pot_list(&world));
 
     let out = run(world.grove(&["ls", "--json"]));
     assert_eq!(out.code, 0, "{}", out.stderr);
@@ -73,13 +90,13 @@ fn pins_and_runs_from_the_golden_fixtures() {
         repo("delta")["checkouts"][0]["pins"]["value"],
         serde_json::json!({"scions": 2, "outdated": 1, "problems": 1})
     );
-    assert_eq!(repo("delta")["checkouts"][0]["pins"]["source"], "graft");
+    assert_eq!(repo("delta")["checkouts"][0]["pins"]["source"], "tuteur");
     assert_eq!(repo("beta")["checkouts"][0]["pins"]["value"]["scions"], 0);
     assert_eq!(
         repo("alpha")["checkouts"][0]["runs"]["value"],
         serde_json::json!({"running": 0, "review": 1, "stopped": 0})
     );
-    assert_eq!(json["sources"]["graft"], serde_json::json!({"state": "ok"}));
+    assert_eq!(json["sources"]["tuteur"], serde_json::json!({"state": "ok"}));
     assert_eq!(json["sources"]["pot"], serde_json::json!({"state": "ok"}));
 
     let out = run(world.grove(&["ls", "@tools"]));
@@ -97,13 +114,17 @@ fn pins_and_runs_from_the_golden_fixtures() {
 fn a_failing_tool_is_partial() {
     let world = World::build();
     let pot = printing(&world, "pot", r#"{"version": 2, "runs": []}"#);
-    with_stubs(&world, "#!/bin/sh\necho 'graft: broken' >&2\nexit 1\n", &pot);
+    with_stubs(
+        &world,
+        &[("tuteur", "#!/bin/sh\necho 'tuteur: broken' >&2\nexit 1\n")],
+        &pot,
+    );
 
     let out = run(world.grove(&["ls"]));
     assert_eq!(out.code, 3);
     assert!(
         out.stdout
-            .contains("? pins: graft status in ~/src/delta failed (exit status: 1): graft: broken"),
+            .contains("? pins: tuteur status in ~/src/delta failed (exit status: 1): tuteur: broken"),
         "{}",
         out.stdout
     );
@@ -114,6 +135,42 @@ fn a_failing_tool_is_partial() {
         out.stdout
     );
     let json = run(world.grove(&["ls", "--json"])).json();
-    assert_eq!(json["sources"]["graft"]["state"], "failed");
+    assert_eq!(json["sources"]["tuteur"]["state"], "failed");
     assert_eq!(json["sources"]["pot"]["state"], "failed");
+}
+
+/// tuteur reads graft's layout too (`.scions/`, graft's README marker, `graft.nix`), so when both are installed
+/// grove asks tuteur about every checkout, whichever tool the checkout pins.
+#[test]
+fn tuteur_first_when_both_are_installed() {
+    let world = World::build();
+    let tuteur = clean(&world, "tuteur");
+    let graft = "#!/bin/sh\necho 'graft: should not run' >&2\nexit 1\n";
+    let pot = printing(&world, "pot", r#"{"version": 1, "runs": []}"#);
+    with_stubs(&world, &[("tuteur", &tuteur), ("graft", graft)], &pot);
+
+    let out = run(world.grove(&["ls", "--json"]));
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    let pins = delta_pins(&out.json());
+    assert_eq!(pins["source"], "tuteur");
+    assert_eq!(pins["value"]["scions"], 2);
+}
+
+/// Without tuteur, grove falls back to graft, until the last checkouts move to tuteur.
+#[test]
+fn graft_when_tuteur_is_absent() {
+    let world = World::build();
+    let graft = clean(&world, "graft");
+    let pot = printing(&world, "pot", r#"{"version": 1, "runs": []}"#);
+    with_stubs(&world, &[("graft", &graft)], &pot);
+
+    let out = run(world.grove(&["ls", "--json"]));
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    let json = out.json();
+    let pins = delta_pins(&json);
+    assert_eq!(pins["source"], "graft");
+    assert_eq!(pins["value"]["outdated"], 1);
+    assert_eq!(json["sources"]["tuteur"], serde_json::json!({"state": "ok"}));
+    let out = run(world.grove(&["status", "delta"]));
+    assert!(out.stdout.contains("graft, now"), "{}", out.stdout);
 }

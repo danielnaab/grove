@@ -8,19 +8,24 @@
 //!   `unknown` and the exit code is 3.
 //! - `ok`.
 //!
-//! Contracts: `status/1` from `graft status --json` (pins) and `runs/1` from `pot runs --json` (runs). Their
+//! Contracts: `status/1` from `tuteur status --json` (pins) and `runs/1` from `pot runs --json` (runs). Their
 //! schemas and golden fixtures are copied into `tests/contracts/`.
+//!
+//! The pins tool is `tuteur`, else `graft` (tuteur's name before 0.1.0), chosen once by `PATH`, not per checkout:
+//! tuteur 0.1.x reads graft's layout too (`.scions/`, graft's README marker, `graft.nix`, an input named `graft`),
+//! while graft does not know tuteur's. So tuteur answers for every checkout, and graft only stands in where tuteur
+//! is not installed. Facts name the tool that answered; the report's `tuteur` source covers both.
 
-mod graft;
 mod pot;
+mod tuteur;
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use serde::Serialize;
 
-pub use graft::Pins;
 pub use pot::Runs;
+pub use tuteur::Pins;
 
 use crate::context::Context;
 use crate::fact::Fact;
@@ -37,33 +42,42 @@ pub enum State {
 #[derive(Debug, Serialize)]
 pub struct Report {
     pub git: State,
-    pub graft: State,
+    /// The pins tool: tuteur, or graft standing in for it.
+    pub tuteur: State,
     pub pot: State,
 }
 
 impl Report {
     /// `(column, state)` for each source whose facts are unknown, for the `? pins: ...` lines.
     pub fn unknown(&self) -> Vec<(&'static str, &State)> {
-        [("pins", &self.graft), ("runs", &self.pot)]
+        [("pins", &self.tuteur), ("runs", &self.pot)]
             .into_iter()
             .filter(|(_, s)| **s != State::Ok)
             .collect()
     }
 
     pub fn partial(&self) -> bool {
-        [&self.git, &self.graft, &self.pot]
+        [&self.git, &self.tuteur, &self.pot]
             .into_iter()
             .any(|s| matches!(s, State::Failed(_)))
     }
 }
 
+/// The tool that reads pins: its name (`tuteur` or `graft`) and path.
+struct PinsTool {
+    name: &'static str,
+    path: PathBuf,
+}
+
+const NO_PINS_TOOL: &str = "tuteur not found on PATH";
+
 pub struct Sources {
-    graft: Option<PathBuf>,
+    pins: Option<PinsTool>,
     pot: std::result::Result<Vec<pot::Run>, State>,
 }
 
 impl Sources {
-    /// Find graft and pot, and read pot's runs once.
+    /// Find tuteur (else graft) and pot, and read pot's runs once.
     pub fn load() -> Sources {
         let pot = match on_path("pot") {
             None => Err(State::Absent("pot not found on PATH".into())),
@@ -71,32 +85,34 @@ impl Sources {
                 .and_then(|out| pot::parse(&out).map_err(|e| format!("pot runs --json: {e}")))
                 .map_err(State::Failed),
         };
-        Sources {
-            graft: on_path("graft"),
-            pot,
-        }
+        let pins = ["tuteur", "graft"]
+            .into_iter()
+            .find_map(|name| on_path(name).map(|path| PinsTool { name, path }));
+        Sources { pins, pot }
     }
 
-    /// The `pins` fact for a checkout. graft runs only where `.gitmodules` exists: elsewhere there are none.
+    /// The `pins` fact for a checkout. The pins tool runs only where `.gitmodules` exists (tuteur and graft both
+    /// pin with submodules): elsewhere there are none.
     pub fn pins(&self, ctx: &Context, checkout: &Path) -> Fact<Pins> {
-        let Some(graft) = &self.graft else {
-            return Fact::unknown("graft not found on PATH", "graft", ctx.now);
+        let Some(tool) = &self.pins else {
+            return Fact::unknown(NO_PINS_TOOL, "tuteur", ctx.now);
         };
         if !checkout.join(".gitmodules").exists() {
             return Fact::known(Pins::default(), ".gitmodules", ctx.now);
         }
         let dir = checkout.to_string_lossy();
+        let name = tool.name;
         let result = run(
-            graft,
+            &tool.path,
             &["status", "-C", &dir, "--json"],
-            &format!("graft status in {}", ctx.tilde(checkout)),
+            &format!("{name} status in {}", ctx.tilde(checkout)),
         )
         .and_then(|out| {
-            graft::parse(&out).map_err(|e| format!("graft status --json in {}: {e}", ctx.tilde(checkout)))
+            tuteur::parse(&out).map_err(|e| format!("{name} status --json in {}: {e}", ctx.tilde(checkout)))
         });
         match result {
-            Ok(pins) => Fact::known(pins, "graft", ctx.now),
-            Err(reason) => Fact::unknown(reason, "graft", ctx.now),
+            Ok(pins) => Fact::known(pins, name, ctx.now),
+            Err(reason) => Fact::unknown(reason, name, ctx.now),
         }
     }
 
@@ -111,10 +127,10 @@ impl Sources {
         }
     }
 
-    /// The report, given the pins facts this command read (graft's state is the worst of them).
+    /// The report, given the pins facts this command read (the pins tool's state is the worst of them).
     pub fn report<'a>(&self, pins: impl IntoIterator<Item = &'a Fact<Pins>>) -> Report {
-        let graft = if self.graft.is_none() {
-            State::Absent("graft not found on PATH".into())
+        let tuteur = if self.pins.is_none() {
+            State::Absent(NO_PINS_TOOL.into())
         } else {
             pins.into_iter()
                 .find_map(|p| p.value.as_ref().err())
@@ -126,7 +142,7 @@ impl Sources {
         };
         Report {
             git: State::Ok,
-            graft,
+            tuteur,
             pot,
         }
     }

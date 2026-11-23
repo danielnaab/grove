@@ -16,7 +16,7 @@ Everything grove reports is a **fact**: a value, where it came from (`source`), 
 | `FETCH_HEAD` | when the repository was last fetched, by anyone |
 | `grove.toml:LINE` | tags and production, with the line that set them |
 | `grove sync` | the last fetch outcome per remote, from grove's state |
-| `graft` | pins (`graft status --json`, contract `status/1`) |
+| `tuteur` | pins (`tuteur status --json`, contract `status/1`). `graft` when grove asked graft, because tuteur is not on `PATH` |
 | `pot` | runs (`pot runs --json`, contract `runs/1`) |
 
 ## Unknown is a result

@@ -246,7 +246,6 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "glob",
- "humantime",
  "serde",
  "serde_json",
  "tempfile",

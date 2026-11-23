@@ -42,7 +42,7 @@ impl LastSync {
     }
 
     pub fn time(&self) -> Option<SystemTime> {
-        humantime::parse_rfc3339(&self.at).ok()
+        output::parse_timestamp(&self.at)
     }
 
     /// `ok`, or `failed (origin)`.

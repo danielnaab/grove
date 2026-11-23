@@ -13,7 +13,6 @@ serde = { version = "1", features = ["derive"] }    # config and JSON models
 serde_json = "1"                                    # --json output; runs/1 and status/1 input
 toml = "0.9"                                        # grove.toml, with spans for file:line reporting
 glob = "0.3"                                        # [discover] scan and ignore globs; no dependencies
-humantime = "2"                                     # RFC 3339 observed_at; no dependencies
 
 [dev-dependencies]
 trycmd = "0.15"                                     # Markdown CLI transcripts (docs/reference/cli)

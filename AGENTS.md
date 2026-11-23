@@ -63,7 +63,7 @@ transcripts in [docs/reference/cli/](docs/reference/cli/), which are also the te
   sources`, and `cargo test`.
 - Advisories need the network: run `cargo deny check advisories` in the dev shell.
 - Keep dependencies few. Before adding a crate, check whether std or an existing dependency covers it, and say why
-  in the commit message. Current runtime dependencies: clap, serde, serde_json, toml, glob, humantime.
+  in the commit message. Current runtime dependencies: clap, serde, serde_json, toml, glob.
 - Version: `0.1.0`. Stay pre-1.0 until the `grove/1` output and the contracts grove reads are stable.
 
 ## Tests: behavior first

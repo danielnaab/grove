@@ -6,6 +6,12 @@ all-features = true
 
 [advisories]
 yanked = "deny"
+ignore = [
+  # humantime is unmaintained (2026-11-22). grove dropped it (RFC 3339 in src/output.rs); only trycmd, a dev
+  # dependency that runs the transcripts, still pulls it in (0.15 and 1.2 alike), and it never ships in grove.
+  # Drop this line when trycmd does. If grove ever depends on humantime again, this ignore must go first.
+  { id = "RUSTSEC-2026-0542", reason = "dev-only, through trycmd; grove's binary does not link humantime" },
+]
 
 [licenses]
 # grove itself is unpublished and unlicensed for now; check only its dependencies.

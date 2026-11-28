@@ -16,6 +16,12 @@ from the working tree. Unknown keys are errors.
 | `discover.ignore` | list of globs | matches are never shown |
 | `tags.NAME` | list of addresses | defines the group `@NAME`. It may not be named `dirty`, `unpushed` or `behind` |
 | `hosts.HOST.production` | list of addresses | on host HOST, these repositories are observed only and never fetched. HOST is the machine's hostname (`GROVE_HOST` overrides it) |
+| `hosts.HOST.after.ADDRESS` | string (a command) | ADDRESS configures HOST, and the command activates it there. `grove here` and `grove rollout` print it when HOST is behind |
+| `aliases.ADDRESS` | list of URLs | other URLs that name the repository at ADDRESS (a mirror), so pins of them match it in `grove rollout` |
+
+Beside grove.toml, `grove/allowed_signers` (an `ssh-keygen` allowed signers file, read from `HEAD`) lists the
+keys that sign host reports, one principal per host name, namespace `grove-report`
+([setup](../guides/setup.md#host-reports)).
 
 ## Secrets
 
@@ -32,6 +38,7 @@ a secret. It reports the file, line, key and rule, and never the value. Rules:
 | variable | effect |
 |---|---|
 | `GROVE_HOST` | the host name used for `hosts.HOST` (default: the machine's hostname) |
-| `XDG_STATE_HOME` | state goes in `$XDG_STATE_HOME/grove` (default `~/.local/state/grove`) |
+| `XDG_STATE_HOME` | state goes in `$XDG_STATE_HOME/grove` (default `~/.local/state/grove`); other hosts' reports in its `hosts/` |
+| `XDG_CONFIG_HOME` | this host's activated commits are read from `$XDG_CONFIG_HOME/grove/activated/` (default `~/.config`) |
 | `BROWSER` | used by `grove open` before `xdg-open` or `open` |
 | `NO_COLOR` | no color, even on a terminal |

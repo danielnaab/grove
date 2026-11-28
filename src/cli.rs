@@ -47,6 +47,17 @@ pub enum Command {
         #[arg(long)]
         print: bool,
     },
+    /// Each provider's latest release against every pin of it, in repositories and on hosts
+    Rollout {
+        /// A provider: a name, owner/name, path or `.` (default: every provider with consumers)
+        provider: Option<String>,
+    },
+    /// What this host owes: pull, bump, switch, with the commands
+    Here {
+        /// Print this host's report (JSON) for another host's `grove rollout`
+        #[arg(long)]
+        report: bool,
+    },
     /// Check grove.toml
     Config {
         #[command(subcommand)]
@@ -72,6 +83,8 @@ impl Command {
             Command::Status { .. } => "status",
             Command::Sync { .. } => "sync",
             Command::Open { .. } => "open",
+            Command::Rollout { .. } => "rollout",
+            Command::Here { .. } => "here",
             Command::Config { .. } => "config check",
         }
     }

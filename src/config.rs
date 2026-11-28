@@ -3,7 +3,9 @@
 //! - Read `grove/grove.toml` from the committed tree of `~/.workstation` (`git show HEAD:grove/grove.toml`),
 //!   never the working tree. `config check --file PATH` reads a draft and says that grove does not use it.
 //! - Schema `version = 1`: `[discover] scan` / `ignore` (globs, `~` expanded), `[tags] NAME = [ADDRESS, ...]`,
-//!   `[hosts.HOST] production = [ADDRESS, ...]`. Unknown keys are errors that name the key and its line.
+//!   `[hosts.HOST] production = [ADDRESS, ...]`, `[hosts.HOST.after] ADDRESS = "COMMAND"` (the repositories that
+//!   configure HOST and the command that activates each), `[aliases] ADDRESS = [URL, ...]` (other URLs that name
+//!   a repository, such as a mirror). Unknown keys are errors that name the key and its line.
 //! - Every value keeps its line, so `config check` can say which file and line set it.
 //! - Order: TOML syntax, then the secret scan (`secrets`), then the schema. A secret is reported even inside an
 //!   unknown key, and its value is never printed.
@@ -56,6 +58,14 @@ pub struct Named {
     pub line: usize,
 }
 
+/// `hosts.HOST.after.ADDRESS = "COMMAND"`: ADDRESS configures HOST, and COMMAND activates it there.
+#[derive(Debug, Clone)]
+pub struct After {
+    pub host: String,
+    pub repo: String,
+    pub command: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct Config {
     pub origin: Origin,
@@ -66,6 +76,10 @@ pub struct Config {
     pub tags: Vec<Named>,
     /// `hosts.HOST.production`, per host.
     pub production: Vec<Named>,
+    /// `hosts.HOST.after`, in file order.
+    pub after: Vec<After>,
+    /// `aliases.ADDRESS`: URLs that also name the repository at ADDRESS.
+    pub aliases: Vec<Named>,
     /// Every value, in file order, for `config check`.
     pub entries: Vec<Entry>,
 }
@@ -117,6 +131,8 @@ impl Config {
             ignore: Vec::new(),
             tags: Vec::new(),
             production: Vec::new(),
+            after: Vec::new(),
+            aliases: Vec::new(),
             entries: Vec::new(),
         }
     }
@@ -124,6 +140,11 @@ impl Config {
     /// The source of a value set on `line`: `grove.toml:8`.
     pub fn source(&self, line: usize) -> String {
         format!("{}:{line}", self.label)
+    }
+
+    /// `hosts.HOST.after` for `host`: its config repositories and their commands.
+    pub fn after_on(&self, host: &str) -> Vec<&After> {
+        self.after.iter().filter(|a| a.host == host).collect()
     }
 
     /// The production list for `host`, if the config has one.
@@ -353,41 +374,100 @@ impl Schema<'_> {
                         });
                     }
                 }
-                "hosts" => {
-                    let Some(hosts) = self.table(value, "hosts") else {
-                        continue;
-                    };
-                    for (host, value) in in_order(hosts) {
-                        let host = host.get_ref().to_string();
-                        let path = join("hosts", &host);
-                        let Some(table) = self.table(value, &path) else {
-                            continue;
-                        };
-                        for (key, value) in in_order(table) {
-                            let line = self.line(&key.span());
-                            if key.get_ref() != "production" {
-                                self.unknown(&key.span(), &path, key.get_ref(), &["production"]);
-                                continue;
-                            }
-                            let path = join(&path, "production");
-                            let Some(addresses) = self.strings(value, &path) else {
-                                continue;
-                            };
-                            self.entry(path, json!(addresses), line);
-                            self.config.production.push(Named {
-                                name: host.clone(),
-                                addresses,
-                                line,
-                            });
-                        }
-                    }
-                }
-                other => self.unknown(&key.span(), "", other, &["version", "discover", "tags", "hosts"]),
+                "hosts" => self.hosts(value),
+                "aliases" => self.aliases(value),
+                other => self.unknown(
+                    &key.span(),
+                    "",
+                    other,
+                    &["version", "discover", "tags", "hosts", "aliases"],
+                ),
             }
         }
         if !version {
             self.problems
                 .push((1, "version is missing (add version = 1)".into()));
+        }
+    }
+}
+
+impl Schema<'_> {
+    /// `hosts`: per host, `production` and `after`.
+    fn hosts(&mut self, value: &Spanned<DeValue<'_>>) {
+        let Some(hosts) = self.table(value, "hosts") else {
+            return;
+        };
+        for (host, value) in in_order(hosts) {
+            let host = host.get_ref().to_string();
+            let path = join("hosts", &host);
+            let Some(table) = self.table(value, &path) else {
+                continue;
+            };
+            for (key, value) in in_order(table) {
+                let line = self.line(&key.span());
+                if key.get_ref() == "after" {
+                    self.after(&host, value);
+                    continue;
+                }
+                if key.get_ref() != "production" {
+                    self.unknown(&key.span(), &path, key.get_ref(), &["production", "after"]);
+                    continue;
+                }
+                let path = join(&path, "production");
+                let Some(addresses) = self.strings(value, &path) else {
+                    continue;
+                };
+                self.entry(path, json!(addresses), line);
+                self.config.production.push(Named {
+                    name: host.clone(),
+                    addresses,
+                    line,
+                });
+            }
+        }
+    }
+
+    /// `aliases`: a table of `ADDRESS = [URL, ...]`.
+    fn aliases(&mut self, value: &Spanned<DeValue<'_>>) {
+        let Some(table) = self.table(value, "aliases") else {
+            return;
+        };
+        for (key, value) in in_order(table) {
+            let line = self.line(&key.span());
+            let name = key.get_ref().to_string();
+            let path = join("aliases", &name);
+            let Some(urls) = self.strings(value, &path) else {
+                continue;
+            };
+            self.entry(path, json!(urls), line);
+            self.config.aliases.push(Named {
+                name,
+                addresses: urls,
+                line,
+            });
+        }
+    }
+
+    /// `hosts.HOST.after`: a table of `ADDRESS = "COMMAND"`.
+    fn after(&mut self, host: &str, value: &Spanned<DeValue<'_>>) {
+        let path = format!("hosts.{host}.after");
+        let Some(table) = self.table(value, &path) else {
+            return;
+        };
+        for (key, value) in in_order(table) {
+            let line = self.line(&key.span());
+            let repo = key.get_ref().to_string();
+            let path = join(&path, &repo);
+            let Some(command) = value.get_ref().as_str().map(ToString::to_string) else {
+                self.problem(&value.span(), format!("{path} must be a string (a command)"));
+                continue;
+            };
+            self.entry(path, json!(command), line);
+            self.config.after.push(After {
+                host: host.to_string(),
+                repo,
+                command,
+            });
         }
     }
 }
@@ -435,6 +515,30 @@ mod tests {
         assert_eq!(
             err.message,
             "t.toml:3: unknown key hosts.h.prodution (did you mean hosts.h.production?)"
+        );
+    }
+
+    #[test]
+    fn hosts_after_and_aliases() {
+        let config = check(
+            "version = 1\n[hosts.h.after]\n\".workstation\" = \"rebuild\"\n[aliases]\nkit = [\"https://m.example/kit\"]\n",
+        )
+        .unwrap();
+        let after = config.after_on("h");
+        assert_eq!(
+            (after[0].repo.as_str(), after[0].command.as_str()),
+            (".workstation", "rebuild")
+        );
+        assert_eq!(config.aliases[0].addresses, ["https://m.example/kit"]);
+        let err = check("version = 1\n[hosts.h.after]\nx = 1\n").unwrap_err();
+        assert_eq!(
+            err.message,
+            "t.toml:3: hosts.h.after.x must be a string (a command)"
+        );
+        let err = check("version = 1\n[hosts.h]\naftr = {}\n").unwrap_err();
+        assert_eq!(
+            err.message,
+            "t.toml:3: unknown key hosts.h.aftr (did you mean hosts.h.after?)"
         );
     }
 

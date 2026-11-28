@@ -2,8 +2,10 @@
 //! Specified by `docs/reference/cli/<command>.md`.
 
 pub mod config_check;
+pub mod here;
 pub mod ls;
 pub mod open;
+pub mod rollout;
 pub mod status;
 pub mod sync;
 

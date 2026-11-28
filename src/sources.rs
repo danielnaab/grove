@@ -29,6 +29,7 @@ pub use tuteur::Pins;
 
 use crate::context::Context;
 use crate::fact::Fact;
+use crate::pins::Pin;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "state", content = "detail", rename_all = "lowercase")]
@@ -77,6 +78,17 @@ pub struct Sources {
 }
 
 impl Sources {
+    /// Find tuteur (else graft), and leave pot unread: for commands that show no runs.
+    pub fn pins_only() -> Sources {
+        let pins = ["tuteur", "graft"]
+            .into_iter()
+            .find_map(|name| on_path(name).map(|path| PinsTool { name, path }));
+        Sources {
+            pins,
+            pot: Err(State::Absent("pot is not read by this command".into())),
+        }
+    }
+
     /// Find tuteur (else graft) and pot, and read pot's runs once.
     pub fn load() -> Sources {
         let pot = match on_path("pot") {
@@ -94,11 +106,26 @@ impl Sources {
     /// The `pins` fact for a checkout. The pins tool runs only where `.gitmodules` exists (tuteur and graft both
     /// pin with submodules): elsewhere there are none.
     pub fn pins(&self, ctx: &Context, checkout: &Path) -> Fact<Pins> {
+        self.status(ctx, checkout, tuteur::parse)
+    }
+
+    /// The pins `status/1` names in a checkout (tuteur's own and its patterns'), for `grove rollout`.
+    pub fn pinned(&self, ctx: &Context, checkout: &Path) -> Fact<Vec<Pin>> {
+        self.status(ctx, checkout, tuteur::parse_pins)
+    }
+
+    /// Run `tuteur status -C CHECKOUT --json` and read it with `parse`.
+    fn status<T: Default>(
+        &self,
+        ctx: &Context,
+        checkout: &Path,
+        parse: fn(&[u8]) -> std::result::Result<T, String>,
+    ) -> Fact<T> {
         let Some(tool) = &self.pins else {
             return Fact::unknown(NO_PINS_TOOL, "tuteur", ctx.now);
         };
         if !checkout.join(".gitmodules").exists() {
-            return Fact::known(Pins::default(), ".gitmodules", ctx.now);
+            return Fact::known(T::default(), ".gitmodules", ctx.now);
         }
         let dir = checkout.to_string_lossy();
         let name = tool.name;
@@ -108,12 +135,23 @@ impl Sources {
             &format!("{name} status in {}", ctx.tilde(checkout)),
         )
         .and_then(|out| {
-            tuteur::parse(&out).map_err(|e| format!("{name} status --json in {}: {e}", ctx.tilde(checkout)))
+            parse(&out).map_err(|e| format!("{name} status --json in {}: {e}", ctx.tilde(checkout)))
         });
         match result {
-            Ok(pins) => Fact::known(pins, name, ctx.now),
+            Ok(value) => Fact::known(value, name, ctx.now),
             Err(reason) => Fact::unknown(reason, name, ctx.now),
         }
+    }
+
+    /// The pins tool's state over the facts a command read: absent, else the first failure, else ok.
+    pub fn tuteur_state<'a, T: 'a>(&self, facts: impl IntoIterator<Item = &'a Fact<T>>) -> State {
+        if self.pins.is_none() {
+            return State::Absent(NO_PINS_TOOL.into());
+        }
+        facts
+            .into_iter()
+            .find_map(|p| p.value.as_ref().err())
+            .map_or(State::Ok, |reason| State::Failed(reason.clone()))
     }
 
     /// The `runs` fact for a checkout: pot's runs whose workspace is this checkout.
@@ -129,13 +167,7 @@ impl Sources {
 
     /// The report, given the pins facts this command read (the pins tool's state is the worst of them).
     pub fn report<'a>(&self, pins: impl IntoIterator<Item = &'a Fact<Pins>>) -> Report {
-        let tuteur = if self.pins.is_none() {
-            State::Absent(NO_PINS_TOOL.into())
-        } else {
-            pins.into_iter()
-                .find_map(|p| p.value.as_ref().err())
-                .map_or(State::Ok, |reason| State::Failed(reason.clone()))
-        };
+        let tuteur = self.tuteur_state(pins);
         let pot = match &self.pot {
             Ok(_) => State::Ok,
             Err(state) => state.clone(),

@@ -16,6 +16,9 @@ not installed. That is why pins and runs show as `?`.
 - [`grove status`](status.md): one repository, fact by fact
 - [`grove sync`](sync.md): fetch everything, merge nothing
 - [`grove open`](open.md): the forge page
+- [`grove rollout`](rollout.md): each provider's latest release against its consumers and hosts (the
+  convergence view; runs in the [estate](../../../tests/fixtures/README.md#the-estate))
+- [`grove here`](here.md): what this host owes, and its report for other hosts
 - [`grove config check`](config-check.md): validate grove.toml
 
 ```console
@@ -25,12 +28,14 @@ Keep your git checkouts in view. Read only.
 Usage: grove [OPTIONS] <COMMAND>
 
 Commands:
-  ls      List repositories: branch, tree, ahead/behind, pins, runs
-  status  Everything grove knows about one repository, with sources and ages
-  sync    Fetch every remote, in parallel. Never merges
-  open    Open a repository's forge page
-  config  Check grove.toml
-  help    Print this message or the help of the given subcommand(s)
+  ls       List repositories: branch, tree, ahead/behind, pins, runs
+  status   Everything grove knows about one repository, with sources and ages
+  sync     Fetch every remote, in parallel. Never merges
+  open     Open a repository's forge page
+  rollout  Each provider's latest release against every pin of it, in repositories and on hosts
+  here     What this host owes: pull, bump, switch, with the commands
+  config   Check grove.toml
+  help     Print this message or the help of the given subcommand(s)
 
 Options:
       --json     Print JSON (schema grove/1)
@@ -38,7 +43,7 @@ Options:
   -V, --version  Print version
 
 $ grove --version
-grove 0.1.0
+grove 0.2.0
 
 ```
 

@@ -246,6 +246,46 @@ pub fn show(dir: &Path, rev: &str, path: &str) -> Result<Option<String>> {
     read(dir, &["show", &format!("{rev}:{path}")])
 }
 
+/// A tag named `v*`: its name, the commit it points to, and whether it carries a signature (an annotated tag
+/// with a PGP or SSH signature block). The signature is not verified here.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Tag {
+    pub name: String,
+    pub commit: String,
+    pub signed: bool,
+}
+
+/// The repository's local `v*` tags (`git for-each-ref refs/tags/v*`): no network.
+pub fn tags(dir: &Path) -> Result<Vec<Tag>> {
+    let format = "%(refname:strip=2)%09%(objecttype)%09%(objectname)%09%(*objectname)%09\
+                  %(if)%(contents:signature)%(then)signed%(end)";
+    let Some(out) = read(
+        dir,
+        &["for-each-ref", &format!("--format={format}"), "refs/tags/v*"],
+    )?
+    else {
+        return Ok(Vec::new());
+    };
+    Ok(out
+        .lines()
+        .filter_map(|line| {
+            let mut f = line.split('\t');
+            let (name, kind, object, peeled, signed) =
+                (f.next()?, f.next()?, f.next()?, f.next()?, f.next()?);
+            let commit = match kind {
+                "commit" => object,
+                "tag" if !peeled.is_empty() => peeled,
+                _ => return None,
+            };
+            Some(Tag {
+                name: name.to_string(),
+                commit: commit.to_string(),
+                signed: kind == "tag" && signed == "signed",
+            })
+        })
+        .collect())
+}
+
 /// Does the working tree's `path` differ from HEAD?
 pub fn differs_from_head(dir: &Path, path: &str) -> Result<bool> {
     let mut cmd = git(dir);

@@ -19,6 +19,21 @@ pub struct World {
 
 impl World {
     pub fn build() -> World {
+        World::build_with(&[])
+    }
+
+    /// The world plus the estate (providers, consumers, host reports), with the fixture's `tuteur` stub and
+    /// `ssh-keygen` on grove's `PATH`.
+    pub fn estate() -> World {
+        let world = World::build_with(&["estate"]);
+        std::os::unix::fs::symlink(world.root.join("stubs/tuteur"), world.bin.join("tuteur"))
+            .expect("tuteur stub");
+        std::os::unix::fs::symlink(which("ssh-keygen"), world.bin.join("ssh-keygen"))
+            .expect("ssh-keygen symlink");
+        world
+    }
+
+    fn build_with(args: &[&str]) -> World {
         let dir = tempfile::tempdir().expect("a temporary directory");
         let root = dir
             .path()
@@ -29,6 +44,7 @@ impl World {
         let status = Command::new("bash")
             .arg(&script)
             .arg(&root)
+            .args(args)
             .status()
             .expect("bash runs world.sh");
         assert!(status.success(), "world.sh failed");

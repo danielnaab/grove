@@ -43,7 +43,7 @@ Options:
   -V, --version  Print version
 
 $ grove --version
-grove 0.1.0
+grove 0.2.0
 
 ```
 

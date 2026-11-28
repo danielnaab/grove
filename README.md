@@ -41,7 +41,7 @@ An ADDRESS is a name (`beta`), `owner/name`, a path, `.`, or a group (`@tools`, 
 
 ## Status
 
-**G1, pre-1.0 (0.1.0, 0.2.0 in preparation).** Every command in the table is built and passes its transcript in
+**G1, pre-1.0 (0.2.0).** Every command in the table is built and passes its transcript in
 [docs/reference/cli/](docs/reference/cli/). pins and runs come from tuteur's `status/1` and pot's `runs/1`
 contracts, tested against their golden fixtures in [tests/contracts/](tests/contracts/). G1 added `rollout` and
 `here`, with host reports; the design's other G1 asks (`tuteur release verify`, `pot doctor --json`) belong to

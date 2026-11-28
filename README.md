@@ -32,6 +32,8 @@ gamma      main     clean  ↓1           ?     ?     4s ago
 | `grove status [ADDRESS]` | one repository: everything grove knows, each fact with its source and age |
 | `grove sync [ADDRESS]` | fetch every remote in parallel. Never merges. Skips this host's production repositories |
 | `grove open ADDRESS` | open the forge page |
+| `grove rollout [PROVIDER]` | the convergence view: each provider's latest signed release against every pin of it, in repositories and on hosts, with the next command for each pin behind |
+| `grove here [--report]` | what this host owes (pull, bump, switch) with the commands; `--report` prints its report for another host |
 | `grove config check` | validate `grove.toml` and show which line set each value |
 
 An ADDRESS is a name (`beta`), `owner/name`, a path, `.`, or a group (`@tools`, `@dirty`, `@unpushed`,
@@ -39,9 +41,11 @@ An ADDRESS is a name (`beta`), `owner/name`, a path, `.`, or a group (`@tools`, 
 
 ## Status
 
-**G0, pre-1.0 (0.1.0).** Every command in the table is built and passes its transcript in
+**G1, pre-1.0 (0.1.0, 0.2.0 in preparation).** Every command in the table is built and passes its transcript in
 [docs/reference/cli/](docs/reference/cli/). pins and runs come from tuteur's `status/1` and pot's `runs/1`
-contracts, tested against their golden fixtures in [tests/contracts/](tests/contracts/).
+contracts, tested against their golden fixtures in [tests/contracts/](tests/contracts/). G1 added `rollout` and
+`here`, with host reports; the design's other G1 asks (`tuteur release verify`, `pot doctor --json`) belong to
+those tools.
 
 ## Docs
 

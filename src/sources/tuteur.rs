@@ -5,6 +5,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::pins::{Pin, Via};
+
 /// What grove shows of a checkout's pins: its tuteur patterns.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct Pins {
@@ -75,9 +77,69 @@ pub fn parse(json: &[u8]) -> Result<Pins, String> {
     })
 }
 
+/// Each pin `status/1` names: tuteur's own (the `graft` field) and every pattern with a URL. A pin with no URL
+/// (an unregistered pattern) names nothing grove can match.
+pub fn parse_pins(json: &[u8]) -> Result<Vec<Pin>, String> {
+    #[derive(Deserialize)]
+    struct Report {
+        version: u64,
+        #[serde(default)]
+        graft: Option<Pinned>,
+        #[serde(default)]
+        scions: Vec<Pinned>,
+    }
+    #[derive(Deserialize)]
+    struct Pinned {
+        #[serde(default)]
+        name: Option<String>,
+        #[serde(default)]
+        url: Option<String>,
+        #[serde(default)]
+        tag: Option<String>,
+        #[serde(default)]
+        commit: Option<String>,
+    }
+    let report: Report = serde_json::from_slice(json).map_err(|e| format!("not status/1 JSON: {e}"))?;
+    if report.version != 1 {
+        return Err(format!(
+            "status/{} is newer than grove reads (status/1)",
+            report.version
+        ));
+    }
+    let own = report.graft.map(|p| (Via::Tuteur, p));
+    let patterns = report
+        .scions
+        .into_iter()
+        .map(|p| (Via::Pattern(p.name.clone().unwrap_or_default()), p));
+    Ok(own
+        .into_iter()
+        .chain(patterns)
+        .filter_map(|(how, p)| Some(Pin::new(how, p.url?, p.tag, p.commit)))
+        .collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pins_from_the_golden_fixtures() {
+        let path = format!(
+            "{}/tests/contracts/status-1/clean.json",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let pins = parse_pins(&std::fs::read(path).unwrap()).unwrap();
+        let shown: Vec<_> = pins.iter().map(|p| (p.via.as_str(), p.tag.as_deref())).collect();
+        assert_eq!(
+            shown,
+            [
+                ("tuteur", Some("v2.21.0")),
+                ("pattern knowledge-base-kit", Some("v2.1.0")),
+                ("pattern notebook-kit", Some("v0.3.1"))
+            ]
+        );
+        assert_eq!(pins[1].how, Via::Pattern("knowledge-base-kit".into()));
+    }
 
     fn fixture(name: &str) -> Pins {
         let path = format!(

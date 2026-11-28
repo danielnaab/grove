@@ -22,6 +22,24 @@ fixed authors and dates, so commit IDs never change (the config commit is `448eb
 | `~/src/scratch` | a checkout matched by `ignore`: not shown. |
 | `~/.workstation` | `grove/grove.toml` committed at `448ebef`, plus an uncommitted edit grove must not read. |
 
+## The estate
+
+`world.sh DIR estate` adds what `grove rollout` and `grove here` read (`rollout.md`, `here.md`):
+
+| | |
+|---|---|
+| `~/src/kit` | provider: signed tags `v1.0.0`, `v1.1.0`; `v1.2.0` is unsigned, so not a release |
+| `~/src/tool` | provider: signed tags `v0.1.0`, `v0.2.0` |
+| `~/src/app` | pins kit `v1.0.0` (status/1): behind |
+| `~/src/site` | pins kit `v1.1.0` through a mirror URL that `aliases.kit` names, and a pattern from a repository grove has no checkout of |
+| `~/.workstation` | scanned; `flake.lock` pins tool `v0.1.0`, then `v0.2.0` at `HEAD`; `hosts.testhost.after` and `hosts.mac.after` name it; `grove/allowed_signers` holds mac's key |
+| `~/.config/grove/activated/.workstation` | testhost activated the older commit, so it owes a switch |
+| `~/.local/state/grove/hosts/` | `mac.json`, signed by mac's key (mac activated `HEAD`), and `old-mac.json`, unsigned |
+| `stubs/tuteur` | prints `stubs/status/NAME.json` for `tuteur status -C .../NAME --json` |
+
+Keys are made with `ssh-keygen` on each run, so the estate's `~/.workstation` commit IDs change between runs.
+`World::estate()` puts the tuteur stub and `ssh-keygen` on grove's `PATH`.
+
 Remotes are bare repositories under `remotes/`. Checkouts name them by forge URL
 (`https://git.example.org/daniel/NAME.git`), and a repo-local `url.<remotes>/.insteadOf` maps that URL to the
 bare repository. So `grove open` sees a forge URL, and `grove sync` fetches offline.

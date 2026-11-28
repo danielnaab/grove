@@ -37,7 +37,11 @@
             inherit src;
             strictDeps = true;
             # Tests build throwaway git worlds and run grove against them.
-            nativeCheckInputs = [ pkgs.git ];
+            # rollout's estate signs tags and host reports with ssh-keygen.
+            nativeCheckInputs = [
+              pkgs.git
+              pkgs.openssh
+            ];
           };
 
           cargoArtifacts = craneLib.buildDepsOnly commonArgs;

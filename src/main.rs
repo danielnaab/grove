@@ -18,13 +18,16 @@ mod config;
 mod context;
 mod discover;
 mod error;
+mod estate;
 mod exit;
 mod fact;
 mod forge;
 mod git;
+mod hosts;
 mod observe;
 mod output;
 mod parallel;
+mod pins;
 mod sources;
 mod state;
 
@@ -59,6 +62,8 @@ fn run(ctx: &Context, command: Command) -> error::Result<Exit> {
         Command::Status { address } => commands::status::run(ctx, &address),
         Command::Sync { address } => commands::sync::run(ctx, address.as_deref()),
         Command::Open { address, print } => commands::open::run(ctx, &address, print),
+        Command::Rollout { provider } => commands::rollout::run(ctx, provider.as_deref()),
+        Command::Here { report } => commands::here::run(ctx, report),
         Command::Config {
             command: ConfigCommand::Check { file },
         } => commands::config_check::run(ctx, file.as_deref()),

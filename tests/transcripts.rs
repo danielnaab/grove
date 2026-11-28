@@ -1,7 +1,8 @@
 //! The CLI reference in `docs/reference/cli/` is the spec: run every transcript against a fixture world.
 //!
-//! `sync.md` fetches, which moves remote-tracking refs, so it gets a world of its own. The other transcripts only
-//! read and share one. `TRYCMD=overwrite cargo test` rewrites expected output; review that diff like code.
+//! `sync.md` fetches, which moves remote-tracking refs, so it gets a world of its own. `rollout.md` and `here.md`
+//! run in the estate (providers, consumers, host reports). The other transcripts only read and share one.
+//! `TRYCMD=overwrite cargo test` rewrites expected output; review that diff like code.
 
 mod common;
 
@@ -25,6 +26,17 @@ fn read_only_transcripts() {
     cases(&world)
         .case("docs/reference/cli/*.md")
         .skip("docs/reference/cli/sync.md")
+        .skip("docs/reference/cli/rollout.md")
+        .skip("docs/reference/cli/here.md")
+        .run();
+}
+
+#[test]
+fn estate_transcripts() {
+    let world = World::estate();
+    cases(&world)
+        .case("docs/reference/cli/rollout.md")
+        .case("docs/reference/cli/here.md")
         .run();
 }
 

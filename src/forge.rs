@@ -52,9 +52,34 @@ pub fn parse(url: &str) -> Option<Forge> {
     })
 }
 
+/// A URL's identity, for matching a pin with a repository: `host/owner/name`, lowercase, with no scheme, user,
+/// SSH port, `.git`, `git+` prefix (flake URLs) or query. `None` for a local path.
+pub fn identity(url: &str) -> Option<String> {
+    let url = url.strip_prefix("git+").unwrap_or(url);
+    let url = url.split(['?', '#']).next()?;
+    parse(url).map(|f| f.url.trim_start_matches("https://").to_ascii_lowercase())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn identities() {
+        for url in [
+            "git+https://github.com/DanielNaab/grove.git?ref=refs/tags/v0.1.0&shallow=1",
+            "https://github.com/danielnaab/grove",
+            "git@github.com:danielnaab/grove.git",
+            "ssh://git@github.com:22/danielnaab/grove",
+        ] {
+            assert_eq!(
+                identity(url).as_deref(),
+                Some("github.com/danielnaab/grove"),
+                "{url}"
+            );
+        }
+        assert_eq!(identity("/srv/git/grove.git"), None);
+    }
 
     fn page(url: &str) -> Option<String> {
         parse(url).map(|f| f.url)
